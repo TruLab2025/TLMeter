@@ -477,7 +477,7 @@ function Footer() {
                 <div className="flex flex-col md:flex-row items-center gap-4">
                     <span className="font-bold text-[var(--text-secondary)]">© 2026 TruLab</span>
                     <span className="hidden md:inline">|</span>
-                    <span>TL Meter. Od profesjonalnych producentów dla domowych realizatorów.</span>
+                    <span>TL Meter. Profesjonalne narzędzie DSP dla domowych producentów muzyki.</span>
                 </div>
                 <div className="flex gap-8">
                     <Link href="/" className="hover:text-[var(--text-secondary)] transition-colors">Kontakt</Link>

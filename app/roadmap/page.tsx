@@ -337,7 +337,7 @@ export default function RoadmapPage() {
       {/* Footer */}
       <footer className="border-t border-[var(--border)] py-8">
         <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-sm text-[var(--text-muted)] gap-6">
-          <p>© 2026 TruLab | TL Meter. Od profesjonalnych producentów dla domowych realizatorów.</p>
+          <p>© 2026 TruLab | TL Meter. Profesjonalne narzędzie DSP dla domowych producentów muzyki.</p>
           <div className="flex gap-8">
             <Link href="/privacy" className="hover:text-[var(--text-primary)] transition-colors">Polityka prywatności</Link>
             <Link href="/terms" className="hover:text-[var(--text-primary)] transition-colors">Regulamin</Link>

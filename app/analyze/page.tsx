@@ -929,27 +929,28 @@ export default function AnalyzePage() {
 
             {/* Nav */}
             <nav className="sticky top-0 z-50 border-b border-[var(--border)] backdrop-blur-md bg-[rgba(9,11,15,0.85)]">
-                <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
                     <Link href="/">
-                        <BrandLogo size="sm" />
+                        <BrandLogo size="md" />
                     </Link>
-                    <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-end" suppressHydrationWarning>
+                    <div className="flex items-center justify-end gap-3 w-[320px] shrink-0">
+                        <div className="flex flex-col items-end w-[88px]" suppressHydrationWarning>
                             <span className="text-[10px] font-bold uppercase text-[var(--text-muted)] tracking-tighter">Twój Plan</span>
-                            <span className="text-xs font-black uppercase text-[var(--accent)] tracking-wider">
+                            <span className="text-xs font-black uppercase text-[var(--accent)] tracking-wider w-full text-right">
                                 {mounted ? session.plan : "free"}
                             </span>
                         </div>
-                        {mounted && session.plan === "free" && (
-                            <Link href="/activate" className="btn btn-outline text-xs py-1.5 px-3 border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-all whitespace-nowrap ml-3">
-                                Aktywuj kod
-                            </Link>
-                        )}
+                        <Link
+                            href="/activate"
+                            className={`btn btn-outline text-xs py-1.5 px-3 border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-all whitespace-nowrap ml-3 ${mounted && session.plan === "free" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                        >
+                            Aktywuj kod
+                        </Link>
                     </div>
                 </div>
             </nav>
 
-            <div className="max-w-5xl mx-auto px-6 py-10">
+            <div className="max-w-6xl mx-auto px-6 py-10">
                 <h1 className="text-2xl font-bold mb-2">TL Meter</h1>
                 <p className="text-[var(--text-secondary)] mb-6 max-w-2xl">
                     Obiektywna, cyfrowa analiza Twojej muzyki z domowego studia. Sprawdź czy Twój miks trzyma standardy rynkowe zanim wyślesz go do masteringu.
@@ -1485,7 +1486,7 @@ export default function AnalyzePage() {
 
             {/* History & Comparison Panel (Pro/Premium) */}
             {mounted && historyEntries.length > 0 && result && (
-                <div className="max-w-5xl mx-auto px-6 pb-6">
+                <div className="max-w-6xl mx-auto px-6 pb-6">
                     <HistoryPanel
                         history={historyEntries}
                         current={{
@@ -1509,7 +1510,7 @@ export default function AnalyzePage() {
 
             {/* Footer */}
             <footer className="border-t border-[var(--border)] py-8 mt-12 bg-[var(--bg-surface)]">
-                <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-sm text-[var(--text-muted)] gap-8">
+                <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-sm text-[var(--text-muted)] gap-8">
                     <div className="flex flex-col md:flex-row items-center gap-4">
                         <div className="flex items-center gap-2">
                             <span className="font-bold text-[var(--text-secondary)]">© 2026 TruLab</span>
@@ -1525,7 +1526,7 @@ export default function AnalyzePage() {
                             </button>
                         </div>
                         <span className="hidden md:inline">|</span>
-                        <span>TL Meter. Od profesjonalnych producentów dla domowych realizatorów.</span>
+                        <span>TL Meter. Profesjonalne narzędzie DSP dla domowych producentów muzyki.</span>
                     </div>
                     <div className="flex gap-6">
                         <Link href="/" className="hover:text-[var(--text-secondary)] transition-colors">Kontakt</Link>

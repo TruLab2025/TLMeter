@@ -190,7 +190,7 @@ export default function LandingPage() {
     <main className="min-h-screen grid-texture">
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-[var(--border)] backdrop-blur-md bg-[rgba(9,11,15,0.85)]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
           <BrandLogo size="md" />
           
           {/* Desktop Menu */}
@@ -590,7 +590,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row items-center gap-4">
             <span className="font-bold text-[var(--text-secondary)]">© 2026 TruLab</span>
             <span className="hidden md:inline">|</span>
-            <span>TL Meter. Od profesjonalnych producentów dla domowych realizatorów.</span>
+            <span>TL Meter. Profesjonalne narzędzie DSP dla domowych producentów muzyki.</span>
           </div>
           <div className="flex gap-8">
             <Link href="/" className="hover:text-[var(--text-secondary)] transition-colors">Kontakt</Link>
