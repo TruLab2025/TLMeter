@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { activateCode } from "@/lib/license";
 import { useRouter } from "next/navigation";
+import BrandLogo from "@/components/BrandLogo";
 
 const howItWorks = [
   {
@@ -61,11 +62,8 @@ export default function ActivatePage() {
             {/* Header / Nav */}
             <nav className="border-b border-[var(--border)] bg-[rgba(9,11,15,0.5)] backdrop-blur-md">
                 <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center">
-                            <span className="text-black font-bold text-xs">TL</span>
-                        </div>
-                        <span className="font-semibold text-[var(--text-primary)]">TruLab <span className="text-[var(--text-secondary)] mx-1">|</span> <span className="text-[var(--accent)]">TL Meter</span></span>
+                    <Link href="/">
+                        <BrandLogo size="md" />
                     </Link>
                     <Link href="/analyze" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
                         Powrót do analizy

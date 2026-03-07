@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import BrandLogo from "@/components/BrandLogo";
 
 const howItWorks = [
   {
@@ -190,12 +191,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-[var(--border)] backdrop-blur-md bg-[rgba(9,11,15,0.85)]">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center">
-              <span className="text-black font-bold text-xs">TL</span>
-            </div>
-            <span className="font-semibold text-[var(--text-primary)]">TruLab <span className="text-[var(--text-secondary)] mx-1">|</span> <span className="text-[var(--accent)]">TL Meter</span></span>
-          </div>
+          <BrandLogo size="md" />
           
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-6">
