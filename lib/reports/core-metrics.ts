@@ -659,6 +659,7 @@ export function generatePremiumJsonReport(params: {
 
   // PREMIUM adds timeline data
   const lufsShortTerm = raw.dynamic_profile.lufs_short_term_timeline || [];
+  const lufsMomentary = raw.dynamic_profile.lufs_momentary_timeline || [];
   
   // Optionally downsample LUFS timeline to ~100-200 samples
   const downsampledLufsTimeline = (() => {
@@ -671,6 +672,24 @@ export function generatePremiumJsonReport(params: {
     const sampled = [];
     for (let i = 0; i < lufsShortTerm.length; i += stepSize) {
       const value = lufsShortTerm[i];
+      if (!Number.isFinite(value) || value <= -120) {
+        sampled.push(null);
+      } else {
+        sampled.push(round3(value));
+      }
+    }
+    return sampled;
+  })();
+
+  const downsampledLufsMomentaryTimeline = (() => {
+    if (!Array.isArray(lufsMomentary) || lufsMomentary.length === 0) {
+      return [];
+    }
+    const targetCount = 100;
+    const stepSize = Math.max(1, Math.floor(lufsMomentary.length / targetCount));
+    const sampled = [];
+    for (let i = 0; i < lufsMomentary.length; i += stepSize) {
+      const value = lufsMomentary[i];
       if (!Number.isFinite(value) || value <= -120) {
         sampled.push(null);
       } else {
@@ -694,18 +713,46 @@ export function generatePremiumJsonReport(params: {
       })()
     : [];
 
+  const dynamicRange = (() => {
+    const p10 = percentile(raw.dynamic_profile.rms_timeline, 10);
+    const p95 = percentile(raw.dynamic_profile.rms_timeline, 95);
+    if (p10 === null || p95 === null) return null;
+    return p95 - p10;
+  })();
+
+  const lufsMomentaryIntegrated = safeValue(safeMean(lufsMomentary));
+
   return {
     ...premiumBase,
     schema_version: "premium-json-v1",
     plan: "premium",
     spectral: {
       ...proReport.spectral,
+      spectral_rolloff: round3(safeValue(raw.spectral_data.spectral_rolloff ?? null)),
+      spectral_flatness: round3(safeValue(raw.spectral_data.spectral_flatness ?? null)),
+      spectral_flux: round3(safeValue(raw.spectral_data.spectral_flux ?? null)),
       spectral_frames_sampled: downsampleSpectralFrames(raw.spectral_data.spectral_frames),
+    },
+    loudness: {
+      ...proReport.loudness,
+      LUFS_momentary: round3(lufsMomentaryIntegrated),
+    },
+    dynamics: {
+      ...proReport.dynamics,
+      dynamic_range: round3(dynamicRange),
+    },
+    transients: {
+      ...proReport.transients,
+      attack_time: round3(safeValue(raw.transient_data.attack_time_ms ?? null)),
     },
     timeline: {
       LUFS_short_term: {
         timeline_sec: downsampledTimelineSec,
         values: downsampledLufsTimeline,
+      },
+      LUFS_momentary: {
+        timeline_sec: downsampledTimelineSec,
+        values: downsampledLufsMomentaryTimeline,
       },
     },
   };

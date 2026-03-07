@@ -95,6 +95,7 @@ export function generateRawJsonReport(params: {
 
   const dynamicTimeline = loudnessFrames.map((frame: any) => numOrZero(frame?.tSec));
   const rmsTimeline = loudnessFrames.map((frame: any) => numOrZero(frame?.rmsDbfs));
+  const lufsMomentaryTimeline = loudnessFrames.map((frame: any) => numOrZero(frame?.lufsMomentary));
   const lufsShortTermTimeline = loudnessFrames.map((frame: any) => numOrZero(frame?.lufsShortTerm));
 
   const peakTimeline = truePeakFrames.map((frame: any) => numOrZero(frame?.truePeakDbtp));
@@ -119,6 +120,9 @@ export function generateRawJsonReport(params: {
       fft_bins: [60, 120, 240, 480, 960, 1920, 3840, 7680],
       spectral_histogram: spectralHistogram,
       spectral_frames: spectralFrames,
+      spectral_rolloff: typeof raw.global?.spectral?.rolloffHzMean === "number" ? raw.global.spectral.rolloffHzMean : null,
+      spectral_flatness: typeof raw.global?.spectral?.flatnessMean === "number" ? raw.global.spectral.flatnessMean : null,
+      spectral_flux: typeof raw.global?.spectral?.spectralFluxMean === "number" ? raw.global.spectral.spectralFluxMean : null,
     },
     band_energy_timeline: {
       timeline_sec,
@@ -134,6 +138,7 @@ export function generateRawJsonReport(params: {
     transient_data: {
       transient_times: transientTimes,
       transient_strength: transientStrength,
+      attack_time_ms: null,
     },
     stereo_phase_data: {
       timeline_sec: stereoTimeline,
@@ -145,6 +150,7 @@ export function generateRawJsonReport(params: {
       timeline_sec: dynamicTimeline,
       rms_timeline: rmsTimeline,
       peak_timeline: peakTimeline,
+      lufs_momentary_timeline: lufsMomentaryTimeline,
       lufs_short_term_timeline: lufsShortTermTimeline,
     },
   };

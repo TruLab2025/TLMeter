@@ -74,6 +74,9 @@ export interface RawJsonReport extends ReportEnvelope, ReportAnalysisContext {
     fft_bins: number[];
     spectral_histogram: number[];
     spectral_frames: SpectralFrame[];
+    spectral_rolloff?: number | null;
+    spectral_flatness?: number | null;
+    spectral_flux?: number | null;
   };
   band_energy_timeline: {
     timeline_sec: number[];
@@ -89,6 +92,7 @@ export interface RawJsonReport extends ReportEnvelope, ReportAnalysisContext {
   transient_data: {
     transient_times: number[];
     transient_strength: number[];
+    attack_time_ms?: number | null;
   };
   stereo_phase_data: {
     timeline_sec: number[];
@@ -101,6 +105,7 @@ export interface RawJsonReport extends ReportEnvelope, ReportAnalysisContext {
     rms_timeline: number[];
     peak_timeline: number[];
     lufs_short_term_timeline: number[];
+    lufs_momentary_timeline?: number[];
   };
 }
 
@@ -259,7 +264,22 @@ export interface PremiumJsonReport extends Omit<ProJsonReport, "schema_version" 
   plan: "premium";
 
   spectral: ProJsonReport["spectral"] & {
+    spectral_rolloff?: number | null;
+    spectral_flatness?: number | null;
+    spectral_flux?: number | null;
     spectral_frames_sampled: SpectralFrameSampled[]; // Downsampled ~100 frames
+  };
+
+  loudness: ProJsonReport["loudness"] & {
+    LUFS_momentary?: number | null;
+  };
+
+  dynamics: ProJsonReport["dynamics"] & {
+    dynamic_range?: number | null;
+  };
+
+  transients: ProJsonReport["transients"] & {
+    attack_time?: number | null;
   };
   
   timeline?: {
