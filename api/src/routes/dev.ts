@@ -1,8 +1,12 @@
 import express from 'express';
 import { db } from '../db/index';
 import { licenses } from '../db/schema';
+import { requireAdminApiKey, requireDevelopmentOnly } from '../middleware/security';
 
 const router = express.Router();
+
+router.use(requireDevelopmentOnly);
+router.use(requireAdminApiKey);
 
 // GET /api/dev/test-licenses - zwróć wszystkie test license kody
 router.get('/test-licenses', async (req, res) => {

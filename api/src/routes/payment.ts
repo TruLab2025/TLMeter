@@ -11,6 +11,7 @@ import {
     isSuccessfulTpayStatus,
 } from '../services/tpay';
 import { createIfirmaInvoice } from '../services/ifirma';
+import { requireDevelopmentOnly } from '../middleware/security';
 
 const router = express.Router();
 
@@ -144,8 +145,6 @@ router.get('/status/:transactionId', async (req, res) => {
             found: true,
             status: license.status,
             plan: license.plan,
-            code: license.status === 'active' ? license.code : null,
-            email: license.email || null,
         });
     } catch (error) {
         console.error('Payment status error:', error);
@@ -154,7 +153,7 @@ router.get('/status/:transactionId', async (req, res) => {
 });
 
 // Simulated payment endpoint
-router.post('/simulate', express.json(), async (req, res) => {
+router.post('/simulate', requireDevelopmentOnly, express.json(), async (req, res) => {
     try {
         const { plan, email } = req.body;
 

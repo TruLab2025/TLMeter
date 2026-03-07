@@ -2,6 +2,7 @@ import express from 'express';
 import { db } from '../db/index';
 import { analyses } from '../db/schema';
 import { randomUUID } from 'crypto';
+import { requireAdminApiKey } from '../middleware/security';
 
 const router = express.Router();
 
@@ -12,6 +13,14 @@ router.post('/', async (req, res) => {
 
         if (!style) {
             return res.status(400).json({ error: 'Style is required' });
+        }
+
+        if (typeof style !== 'string' || style.length > 64) {
+            return res.status(400).json({ error: 'Invalid style value' });
+        }
+
+        if (filename && (typeof filename !== 'string' || filename.length > 255)) {
+            return res.status(400).json({ error: 'Invalid filename value' });
         }
 
         const analysis = {
@@ -35,7 +44,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/analyses - pobierz wszystkie analizy (optional, dla debugowania)
-router.get('/', async (req, res) => {
+router.get('/', requireAdminApiKey, async (req, res) => {
     try {
         const allAnalyses = await db.select().from(analyses);
         res.json(allAnalyses);
@@ -67,6 +76,10 @@ router.post('/submit-metrics', async (req, res) => {
             return res.status(400).json({ error: 'Missing style parameter' });
         }
 
+        if (typeof style !== 'string' || style.length > 64) {
+            return res.status(400).json({ error: 'Invalid style parameter' });
+        }
+
         if (!metrics || typeof metrics !== 'object') {
             return res.status(400).json({ error: 'Missing or invalid metrics' });
         }
@@ -92,7 +105,7 @@ router.post('/submit-metrics', async (req, res) => {
 
         // W przyszłości: dodaj do bazy, oblicz percentyle, itp.
         // Na razie loguj do debugowania
-        console.log(`Received metrics for style: ${style}`, metrics);
+        console.log(`Received anonymous metrics for style: ${style}`);
 
         return res.json({
             success: true,

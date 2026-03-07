@@ -4,17 +4,44 @@ import { licenses, licenseDevices } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'trulab_super_secret_dev_key';
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex'));
+
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is required in production');
+}
+
+const activationLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: Number(process.env.LICENSE_ACTIVATION_MAX || 30),
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const validationLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: Number(process.env.LICENSE_VALIDATION_MAX || 120),
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 // 1. Activate License
-router.post('/activate', express.json(), async (req, res) => {
+router.post('/activate', activationLimiter, express.json(), async (req, res) => {
     try {
         const { code, fingerprint, userAgent } = req.body;
 
         if (!code || !fingerprint) {
             return res.status(400).json({ error: 'Code and fingerprint are required' });
+        }
+
+        if (typeof code !== 'string' || typeof fingerprint !== 'string') {
+            return res.status(400).json({ error: 'Invalid input types' });
+        }
+
+        if (code.length > 64 || fingerprint.length > 128) {
+            return res.status(400).json({ error: 'Input too long' });
         }
 
         // Find license
@@ -96,11 +123,15 @@ router.post('/activate', express.json(), async (req, res) => {
 });
 
 // 2. Validate Session (called by frontend on load/actions)
-router.post('/validate', express.json(), async (req, res) => {
+router.post('/validate', validationLimiter, express.json(), async (req, res) => {
     try {
         const { token, fingerprint } = req.body;
 
         if (!token) {
+            return res.json({ valid: false, plan: 'free' });
+        }
+
+        if (typeof token !== 'string' || token.length > 4096) {
             return res.json({ valid: false, plan: 'free' });
         }
 
