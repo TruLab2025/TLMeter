@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# subproject artifacts
+/api/node_modules
+/api/.next
+
+# workspace & exports
+.tmp/
+TLMeter.code-workspace
+snapshots-export.json
+snapshots-export.zip
+
+# other generated data
+public/data/
