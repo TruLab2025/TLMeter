@@ -17,7 +17,7 @@ const roadmapItems = [
       { name: "Podstawowe porady DAW dla Free i Lite", done: true },
       { name: "Eksport RAW JSON (Free/Lite)", done: true },
       { name: "System licencji i kodów aktywacyjnych", done: true },
-      { name: "Integracja płatności Tpay + webhook aktywacji", done: true },
+      { name: "Integracja płatności Tpay+webhook aktywacji", done: true },
       { name: "Automatyczne faktury iFirma po płatności", done: true },
     ]
   },
@@ -90,14 +90,14 @@ export default function RoadmapPage() {
         if (count > 0) {
           console.log(`✅ Zmigrowano ${count} analiz - przeładowuję statystyki...`);
           // Re-fetch stats after migration
-          const res = await fetch('http://localhost:3001/api/stats');
+          const res = await fetch('http://localhost:3000/api/stats');
           if (res.ok) {
             const data = await res.json();
             setStats({ total: data?.total || 0, today: data?.today || 0 });
           }
         }
       } catch (err) {
-        console.error('Migration error:', err);
+        console.warn('Migration skipped (API unavailable):', err);
       }
     };
     migrate();
@@ -107,7 +107,7 @@ export default function RoadmapPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/stats');
+        const res = await fetch('http://localhost:3000/api/stats');
         if (res.ok) {
           const data = await res.json();
           setStats({
@@ -118,7 +118,7 @@ export default function RoadmapPage() {
           setStats({ total: 0, today: 0 });
         }
       } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.warn('Roadmap stats unavailable:', error);
         setStats({ total: 0, today: 0 });
       } finally {
         setStatsLoading(false);

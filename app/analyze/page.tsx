@@ -114,11 +114,19 @@ const LOADING_TIPS = [
 // Security: tighten accepted uploads to well-known audio formats + per-plan size caps
 const SUPPORTED_FILE_EXTENSIONS = [".wav", ".aiff", ".aif", ".mp3", ".flac", ".ogg", ".m4a"] as const;
 const MAX_UPLOAD_SIZE_MB: Record<Plan, number> = {
-    free: 40,
-    lite: 80,
-    pro: 200,
-    premium: 300,
+    free: 5,
+    lite: 40,
+    pro: 80,
+    premium: 100,
 };
+
+function getRecommendedPlanForFileSize(fileSizeBytes: number): Plan | null {
+    const fileSizeMb = fileSizeBytes / 1024 / 1024;
+    if (fileSizeMb <= MAX_UPLOAD_SIZE_MB.lite) return "lite";
+    if (fileSizeMb <= MAX_UPLOAD_SIZE_MB.pro) return "pro";
+    if (fileSizeMb <= MAX_UPLOAD_SIZE_MB.premium) return "premium";
+    return null;
+}
 
 const PLAN_MIN_ANALYSIS_MS: Record<Plan, number> = {
     free: 12000,
@@ -231,6 +239,13 @@ export default function AnalyzePage() {
     }, []);
 
     const planFeatures = PLAN_FEATURES[session.plan];
+    const canUseAutoStyle = session.plan !== "free";
+    const uploadInfoByPlan: Record<Plan, string> = {
+        free: `Plan FREE: MP3 / AAC / M4A (stratne) · do ${MAX_UPLOAD_SIZE_MB.free} MB`,
+        lite: `Plan LITE: WAV / AIFF + MP3 / AAC / M4A · do ${MAX_UPLOAD_SIZE_MB.lite} MB`,
+        pro: `Plan PRO: + FLAC / OGG oraz wszystkie niższe formaty · do ${MAX_UPLOAD_SIZE_MB.pro} MB`,
+        premium: `Plan PREMIUM: + FLAC / OGG oraz wszystkie niższe formaty · do ${MAX_UPLOAD_SIZE_MB.premium} MB`,
+    };
 
     const stylesByPlan: Record<Plan, StyleSlug[]> = {
         free: ["rock", "grunge", "metal"],
@@ -259,6 +274,14 @@ export default function AnalyzePage() {
 
     const comingSoonStyles: StyleSlug[] = ["jazz", "rnb", "ambient"];
 
+    useEffect(() => {
+        if (!mounted) return;
+        if (session.plan === "free" && analysisMode === "suggest") {
+            setAnalysisMode("manual");
+            setStyle("rock");
+        }
+    }, [mounted, session.plan, analysisMode]);
+
     // Load history on mount
     useEffect(() => {
         if (!mounted) return;
@@ -270,13 +293,13 @@ export default function AnalyzePage() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await fetch('http://localhost:3001/api/stats');
+                const res = await fetch('http://localhost:3000/api/stats');
                 if (res.ok) {
                     const data = await res.json();
                     setStats({ total: data?.total || 0, today: data?.today || 0 });
                 }
             } catch (err) {
-                console.error('Failed to fetch stats:', err);
+                console.warn('Stats endpoint unavailable:', err);
             }
         };
         fetchStats();
@@ -297,7 +320,7 @@ export default function AnalyzePage() {
                     }
                 }
             } catch (err) {
-                console.error('Failed to load sponsors:', err);
+                console.warn('Sponsors data unavailable:', err);
             }
         };
         loadSponsors();
@@ -316,7 +339,11 @@ export default function AnalyzePage() {
 
         const maxSizeBytes = MAX_UPLOAD_SIZE_MB[session.plan] * 1024 * 1024;
         if (f.size > maxSizeBytes) {
-            setError(`Plik przekracza limit ${MAX_UPLOAD_SIZE_MB[session.plan]} MB dla planu ${session.plan.toUpperCase()}.`);
+            const recommendedPlan = getRecommendedPlanForFileSize(f.size);
+            const sizeError = recommendedPlan
+                ? `Plik przekracza limit ${MAX_UPLOAD_SIZE_MB[session.plan]} MB dla planu ${session.plan.toUpperCase()}. Odblokuj plan ${recommendedPlan.toUpperCase()}, aby analizować większe pliki.`
+                : `Plik przekracza limit ${MAX_UPLOAD_SIZE_MB[session.plan]} MB dla planu ${session.plan.toUpperCase()}. Maksymalny obsługiwany rozmiar to ${MAX_UPLOAD_SIZE_MB.premium} MB w planie PREMIUM.`;
+            setError(sizeError);
             setFile(null);
             return;
         }
@@ -397,12 +424,42 @@ export default function AnalyzePage() {
             return;
         }
 
+        if (session.plan === "free" && analysisMode === "suggest") {
+            setError("Tryb auto „Sugeruj styl” jest dostępny od planu Lite. Odblokuj plan Lite, aby używać auto‑wykrywania stylu.");
+            return;
+        }
+
         const analysisStartTime = performance.now();
 
-        // Check format based on plan
-        const isAllowed = planFeatures.allowedFormats.includes('*') || planFeatures.allowedFormats.includes(file.type);
+        // Check format based on plan (MIME + extension fallback)
+        const extension = file.name.split('.').pop()?.toLowerCase() ?? "";
+        const allowedExtensionsByPlan: Record<Plan, string[]> = {
+            free: ["mp3", "aac", "m4a"],
+            lite: ["mp3", "aac", "m4a", "wav", "aiff", "aif"],
+            pro: ["*"],
+            premium: ["*"],
+        };
+        const extensionAllowed = allowedExtensionsByPlan[session.plan].includes("*") || allowedExtensionsByPlan[session.plan].includes(extension);
+        const mimeAllowed = planFeatures.allowedFormats.includes('*') || planFeatures.allowedFormats.includes(file.type);
+        const isAllowed = mimeAllowed || extensionAllowed;
         if (!isAllowed) {
-            setError(`Format ${file.type.split('/')[1]?.toUpperCase() || 'wybrany'} wymaga planu Lite/Pro (bezstratna analiza WAV/AIFF).`);
+            const isFlacOrOgg = ["flac", "ogg", "oga"].includes(extension) || ["audio/flac", "audio/ogg", "audio/oga", "application/ogg"].includes(file.type);
+            if (isFlacOrOgg) {
+                setError("Format FLAC/OGG jest dostępny od planu Pro. Odblokuj plan Pro, aby analizować ten format.");
+            } else {
+                setError(`Format ${file.type.split('/')[1]?.toUpperCase() || extension.toUpperCase() || 'wybrany'} wymaga planu Lite/Pro (bezstratna analiza WAV/AIFF). Odblokuj plan Lite, aby analizować ten format.`);
+            }
+            setFile(null);
+            return;
+        }
+
+        const maxSizeBytes = MAX_UPLOAD_SIZE_MB[session.plan] * 1024 * 1024;
+        if (file.size > maxSizeBytes) {
+            const recommendedPlan = getRecommendedPlanForFileSize(file.size);
+            const sizeError = recommendedPlan
+                ? `Plik przekracza limit ${MAX_UPLOAD_SIZE_MB[session.plan]} MB dla planu ${session.plan.toUpperCase()}. Odblokuj plan ${recommendedPlan.toUpperCase()}, aby analizować większe pliki.`
+                : `Plik przekracza limit ${MAX_UPLOAD_SIZE_MB[session.plan]} MB dla planu ${session.plan.toUpperCase()}. Maksymalny obsługiwany rozmiar to ${MAX_UPLOAD_SIZE_MB.premium} MB w planie PREMIUM.`;
+            setError(sizeError);
             setFile(null);
             return;
         }
@@ -445,6 +502,7 @@ export default function AnalyzePage() {
         }
 
         try {
+            console.log('[ANALYZA] Start', { file, session, style, analysisMode });
             const autoEligibleStyles = AVAILABLE_STYLES.map(s => s.slug as StyleSlug).filter(slug => !comingSoonStyles.includes(slug));
 
             // Determine which style to analyze
@@ -465,7 +523,13 @@ export default function AnalyzePage() {
             // Load audio
             if (abortRef.current) throw new Error("Analiza została anulowana.");
             updateProgress({ stage: "Ładowanie pliku..." });
-            const arrayBuffer = await file.arrayBuffer();
+            let arrayBuffer;
+            try {
+                arrayBuffer = await file.arrayBuffer();
+            } catch (e) {
+                console.error('[ANALYZA] Błąd arrayBuffer', e);
+                throw e;
+            }
 
             if (abortRef.current) throw new Error("Analiza została anulowana.");
             let audioCtx: AudioContext | null = null;
@@ -475,6 +539,9 @@ export default function AnalyzePage() {
                 if (abortRef.current) throw new Error("Analiza została anulowana.");
                 updateProgress({ stage: "Dekodowanie audio..." });
                 audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            } catch (e) {
+                console.error('[ANALYZA] Błąd decodeAudioData', e);
+                throw e;
             } finally {
                 if (audioCtx && audioCtx.state !== "closed") {
                     await audioCtx.close().catch(() => undefined);
@@ -482,23 +549,39 @@ export default function AnalyzePage() {
             }
 
             if (!audioBuffer) {
+                console.error('[ANALYZA] audioBuffer niezainicjalizowany!');
                 throw new Error("Nie udało się zdekodować pliku audio.");
             }
 
             // Dynamically import the analyzer (DSP engine)
             if (abortRef.current) throw new Error("Analiza została anulowana.");
             updateProgress({ stage: "Analiza DSP...", detail: "loudness" });
-            const { analyzeAudioBuffer } = await import("@/lib/dsp/analyze");
-            const raw = await analyzeAudioBuffer(audioBuffer, {
-                frameMs: 46,
-                hopMs: 23,
+            let analyzeAudioBuffer;
+            try {
+                ({ analyzeAudioBuffer } = await import("@/lib/dsp/analyze"));
+            } catch (e) {
+                console.error('[ANALYZA] Błąd importu analyzeAudioBuffer', e);
+                throw e;
+            }
+            // Dla Premium większe frameMs/hopMs (szybsza analiza)
+            const isPremium = session.plan === "premium";
+            let raw;
+            try {
+                raw = await analyzeAudioBuffer(audioBuffer, {
+                frameMs: isPremium ? 128 : 46,
+                hopMs: isPremium ? 64 : 23,
                 rolloffPercent: 95,
+                forceEssentia: isPremium ? true : false,
                 // @ts-ignore - dodane specjalnie w JS zeby backend zatrzymywał skan
                 isAborted: () => abortRef.current,
                 onProgress: (p: { stage: string; detail?: string }) => {
                     if (!abortRef.current) updateProgress(p);
                 },
-            }) as AnalysisResult;
+                }) as AnalysisResult;
+            } catch (e) {
+                console.error('[ANALYZA] Błąd analyzeAudioBuffer', e);
+                throw e;
+            }
 
             if (abortRef.current) throw new Error("Analiza została anulowana.");
 
@@ -574,7 +657,7 @@ export default function AnalyzePage() {
 
             // Save analysis to server database (ALWAYS, for all plans including FREE)
             try {
-                await fetch('http://localhost:3001/api/analyses', {
+                await fetch('http://localhost:3000/api/analyses', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -586,7 +669,7 @@ export default function AnalyzePage() {
                 // Update local stats counter after successful save
                 setStats(prev => ({ total: prev.total + 1, today: prev.today + 1 }));
             } catch (err) {
-                console.error('Failed to save analysis to server:', err);
+                console.warn('Could not save analysis to API:', err);
                 // Nie przerwywaj analizy jeśli serwer nie odpowie
             }
 
@@ -635,7 +718,7 @@ export default function AnalyzePage() {
                     console.log(`ℹ️ Detected possible reference (${referenceDetected.confidence.toFixed(0)}%) but user didn't confirm: ${referenceDetected.reason}`);
                 }
             } catch (err) {
-                console.error("Failed to submit metrics to calibration:", err);
+                console.warn("Calibration submit skipped:", err);
                 // Nie przerwywaj - to jest opcjonalne
             }
 
@@ -828,7 +911,7 @@ export default function AnalyzePage() {
                 value: formatLufs(g.integratedLufs),
                 score: scoreInRange(g.integratedLufs ?? -99, t.lufs_integrated.min, t.lufs_integrated.max, t.lufs_integrated.ideal),
                 desc: "LUFS decyduje w odbiorze o tym, jak głośno zabrzmi Twój miks względem innych na Spotify czy w radiu.",
-                detail: session.plan === "free" ? "Analiza Peak/LRA dostępna w planie Lite+" : `True Peak: ${formatDb(g.truePeakDbtp)}  |  LRA: ${formatNum(g.lra, 1)} LU`,
+                detail: session.plan === "free" ? "Analiza Peak/LRA dostępna w planie Lite" : `True Peak: ${formatDb(g.truePeakDbtp)}  |  LRA: ${formatNum(g.lra, 1)} LU`,
                 locked: false,
             },
             {
@@ -898,6 +981,17 @@ export default function AnalyzePage() {
         ? Math.round(sections.filter(s => !s.locked).reduce((sum, s) => sum + s.score, 0) / sections.filter(s => !s.locked).length)
         : null;
 
+    const detectUpsellPlanFromError = (message: string): Plan | null => {
+        const lower = message.toLowerCase();
+        if (lower.includes("planu premium") || lower.includes("plan premium")) return "premium";
+        if (lower.includes("planu pro") || lower.includes("plan pro")) return "pro";
+        if (lower.includes("planu lite") || lower.includes("plan lite")) return "lite";
+        return null;
+    };
+
+    const upsellPlan = error ? detectUpsellPlanFromError(error) : null;
+    const isUpsellError = Boolean(upsellPlan) || (error ? error.toLowerCase().includes("odblokuj plan") : false);
+
     return (
         <main className="min-h-screen grid-texture">
             {/* Sponsor Modal Popup AFTER analysis - Closeable */}
@@ -922,6 +1016,57 @@ export default function AnalyzePage() {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                                 </a>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Global Error Popup */}
+            {error && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="card w-full max-w-xl p-6 border-[var(--warn)]/40">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                            <h3 className="text-base font-bold text-[var(--text-primary)]">⚠️ Wystąpił problem</h3>
+                            <button
+                                onClick={() => setError(null)}
+                                className="btn btn-outline text-xs px-2 py-1"
+                                aria-label="Zamknij komunikat"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{error}</p>
+
+                        <p className="text-xs text-[var(--text-muted)] mt-3">
+                            {isUpsellError
+                                ? "Ten limit wynika z aktualnego planu. Odblokuj wyższy plan, aby kontynuować bez ograniczenia." 
+                                : "Spróbuj odświeżyć stronę lub sprawdź połączenie internetowe. Plik audio może być uszkodzony lub w nieobsługiwanym formacie."}
+                        </p>
+
+                        <div className="flex flex-wrap justify-end gap-2 mt-5">
+                            <button
+                                onClick={() => setError(null)}
+                                className="btn btn-outline text-sm px-4 py-2"
+                            >
+                                Zamknij
+                            </button>
+
+                            {isUpsellError ? (
+                                <button
+                                    onClick={() => router.push(`/payment?plan=${upsellPlan ?? "lite"}#compare-plans`)}
+                                    className="btn btn-primary text-sm px-4 py-2"
+                                >
+                                    Przejdź do {(upsellPlan ?? "lite").toUpperCase()}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="btn btn-primary text-sm px-4 py-2"
+                                >
+                                    Odśwież stronę
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -963,24 +1108,30 @@ export default function AnalyzePage() {
                         {/* Suggest Style Button */}
                         <button
                             onClick={() => {
+                                if (!canUseAutoStyle) {
+                                    router.push('/payment?plan=lite#compare-plans');
+                                    return;
+                                }
                                 setStyle('suggest');
                                 setAnalysisMode('suggest');
                             }}
-                            className={`btn ${style === 'suggest' ? "btn-primary" : "btn-outline"} py-2 px-4 flex items-center gap-2`}
+                            className={`btn ${style === 'suggest' ? "btn-primary" : "btn-outline"} py-2 px-4 flex items-center gap-2 transition-all ${!canUseAutoStyle ? "opacity-45 border-dashed border-[var(--border)] bg-[var(--bg-card2)]/60 text-[var(--text-muted)]" : ""}`}
+                            title={!canUseAutoStyle ? "Kliknij, aby odblokować w planie Lite" : undefined}
                         >
                             ✨ Sugeruj
+                            {!canUseAutoStyle && <span className="text-[10px] bg-[var(--bg-card2)] px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--text-muted)] font-semibold">🔒 LITE</span>}
                         </button>
                         {AVAILABLE_STYLES.map(s => {
                             const allowedStyles = stylesByPlan[session.plan];
                             const isComingSoon = comingSoonStyles.includes(s.slug);
                             const isPlanLocked = !allowedStyles.includes(s.slug);
-                            const isLocked = isComingSoon || isPlanLocked;
                             const requiredPlan = requiredPlanByStyle[s.slug];
                             return (
                                 <button
                                     key={s.slug}
                                     onClick={() => {
                                         if (isComingSoon) {
+                                            router.push('/roadmap');
                                             return;
                                         }
                                         if (isPlanLocked) {
@@ -990,11 +1141,12 @@ export default function AnalyzePage() {
                                         setStyle(s.slug as StyleSlug);
                                         setAnalysisMode('manual');
                                     }}
-                                    className={`btn ${style === s.slug ? "btn-primary" : "btn-outline"} py-2 px-4 flex items-center gap-2 ${isLocked ? "opacity-30 grayscale cursor-not-allowed" : ""}`}
+                                    className={`btn ${style === s.slug ? "btn-primary" : "btn-outline"} py-2 px-4 flex items-center gap-2 transition-all ${isComingSoon ? "opacity-30 grayscale saturate-0 border-dashed border-[var(--border)] text-[var(--text-muted)]" : isPlanLocked ? "opacity-45 border-dashed border-[var(--border)] bg-[var(--bg-card2)]/60 text-[var(--text-muted)]" : "border-[var(--accent)]/80 text-[var(--text-primary)] bg-[var(--accent)]/10 shadow-[0_0_0_1px_rgba(0,212,255,0.25)] hover:bg-[var(--accent)]/18"}`}
+                                    title={isComingSoon ? "Funkcja w przygotowaniu — zobacz roadmapę" : isPlanLocked ? `Dostępne od planu ${requiredPlan?.toUpperCase() ?? 'PRO'}` : undefined}
                                 >
                                     {s.emoji} {s.name}
-                                    {isComingSoon && <span className="text-[10px] bg-[var(--bg-card)] px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--accent)] font-bold">Wnet</span>}
-                                    {!isComingSoon && isPlanLocked && <span className="text-[10px] bg-[var(--bg-card)] px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--accent)] font-bold">{requiredPlan ? requiredPlan.toUpperCase() : "PRO"}</span>}
+                                    {isComingSoon && <span className="text-[10px] bg-[var(--bg-card)] px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--accent)] font-bold">WKRÓTCE</span>}
+                                    {!isComingSoon && isPlanLocked && <span className="text-[10px] bg-[var(--bg-card2)] px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--text-muted)] font-semibold">🔒 {requiredPlan ? requiredPlan.toUpperCase() : "PRO"}</span>}
                                 </button>
                             );
                         })}
@@ -1015,6 +1167,9 @@ export default function AnalyzePage() {
                             type="file"
                             accept=".wav,.aiff,.aif,.mp3,.flac,.ogg,.m4a"
                             className="hidden"
+                            onClick={(e) => {
+                                e.currentTarget.value = "";
+                            }}
                             onChange={e => e.target.files?.[0] && handleFileSelected(e.target.files[0])}
                         />
                         {file ? (
@@ -1026,8 +1181,8 @@ export default function AnalyzePage() {
                         ) : (
                             <div>
                                 <div className="text-4xl mb-3 opacity-50">📂</div>
-                                <div className="font-semibold text-[var(--text-secondary)]">Przeciągnij plik tutaj</div>
-                                <div className="text-sm text-[var(--text-muted)] mt-1">lub kliknij · WAV / AIFF / MP3 / FLAC / OGG / M4A</div>
+                                <div className="font-semibold text-[var(--text-secondary)]">Przeciągnij plik tutaj lub kliknij</div>
+                                <div className="text-sm text-[var(--text-muted)] mt-1">{uploadInfoByPlan[session.plan]}</div>
                             </div>
                         )}
                     </div>
@@ -1152,16 +1307,6 @@ export default function AnalyzePage() {
                     <div className="card p-6 mb-5 bg-[var(--bg-card)] border-dashed border-[var(--border)] animate-fade-in flex flex-col items-center justify-center text-center min-h-[124px]">
                         <div className="text-sm font-bold text-[var(--accent)] mb-2 uppercase tracking-widest">💡 Miks tip</div>
                         <p className="text-sm text-[var(--text-secondary)] italic leading-relaxed">{loadingTip}</p>
-                    </div>
-                )}
-
-                {/* Error */}
-                {error && (
-                    <div className="card p-5 mb-5 border-[var(--bad)] bg-[var(--bad)]/5">
-                        <div className="text-sm text-[var(--bad)] font-semibold">⚠️ Wystąpił problem: {error}</div>
-                        <div className="text-xs text-[var(--text-muted)] mt-1">
-                            Spróbuj odświeżyć stronę lub sprawdź połączenie internetowe. Plik audio może być uszkodzony lub w nieobsługiwanym formacie.
-                        </div>
                     </div>
                 )}
 
@@ -1290,7 +1435,7 @@ export default function AnalyzePage() {
                                     {s.locked && (
                                         <div className="absolute inset-0 bg-[var(--bg-card)]/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl z-10">
                                             <div className="text-2xl mb-2">🔒</div>
-                                            <Link href="/payment?plan=lite" className="text-xs text-[var(--accent)] hover:underline">Odblokuj w Lite+</Link>
+                                            <Link href="/payment?plan=lite" className="text-xs text-[var(--accent)] hover:underline">Odblokuj w Lite</Link>
                                         </div>
                                     )}
                                     <div className={s.locked ? "locked-blur" : ""}>

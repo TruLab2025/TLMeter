@@ -43,6 +43,7 @@ router.post('/', async (req, res) => {
     }
 });
 
+
 // GET /api/analyses - pobierz wszystkie analizy (optional, dla debugowania)
 router.get('/', requireAdminApiKey, async (req, res) => {
     try {
@@ -51,6 +52,18 @@ router.get('/', requireAdminApiKey, async (req, res) => {
     } catch (error) {
         console.error('Error fetching analyses:', error);
         res.status(500).json({ error: 'Failed to fetch analyses' });
+    }
+});
+
+// GET /api/analyses/count - liczba wszystkich analiz (publiczny, do licznika na HP)
+router.get('/count', async (req, res) => {
+    try {
+        // Poprawne zliczanie analiz przez drizzle-orm
+        const count = await db.select().from(analyses).execute().then(rows => rows.length);
+        res.json({ count });
+    } catch (error) {
+        console.error('Error counting analyses:', error);
+        res.status(500).json({ error: 'Failed to count analyses' });
     }
 });
 

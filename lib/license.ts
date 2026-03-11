@@ -41,7 +41,7 @@ export function clearSession(): void {
 
 /** Sends activation code to backend and saves session. */
 export async function activateCode(code: string): Promise<SessionData> {
-    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
     const fp = await getFingerprint();
     const res = await fetch(`${API}/api/license/activate`, {
         method: "POST",
@@ -102,7 +102,18 @@ export const PLAN_FEATURES: Record<Plan, PlanFeatures> = {
         compare: false,
         compareMulti: false,
         dailyLimit: null,
-        allowedFormats: ['*']
+        allowedFormats: [
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/aac',
+            'audio/x-m4a',
+            'audio/m4a',
+            'audio/wav',
+            'audio/x-wav',
+            'audio/wave',
+            'audio/aiff',
+            'audio/x-aiff'
+        ]
     },
     pro: {
         sectionsUnlocked: 6,

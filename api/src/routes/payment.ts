@@ -27,7 +27,7 @@ function getPublicAppUrl() {
 }
 
 function getApiPublicUrl() {
-    return process.env.PUBLIC_API_URL || 'http://localhost:3001';
+    return process.env.PUBLIC_API_URL || 'http://localhost:3000';
 }
 
 // Create real payment in Tpay and return redirect URL

@@ -9,7 +9,7 @@ export function parseAllowedOrigins(): string[] {
   if (!raw) {
     return [
       'http://localhost:3000',
-      'http://localhost:3001',
+      'http://localhost:3002',
     ];
   }
   return raw

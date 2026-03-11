@@ -191,7 +191,7 @@ POST /api/analyses/submit-metrics
 ### Submit Metrics
 
 ```bash
-curl -X POST http://localhost:3001/api/analyses/submit-metrics \
+curl -X POST http://localhost:3000/api/analyses/submit-metrics \
   -H "Content-Type: application/json" \
   -d '{
     "style": "rock",

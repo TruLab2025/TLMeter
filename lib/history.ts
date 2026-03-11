@@ -188,7 +188,7 @@ export async function migrateHistoryToServer(): Promise<number> {
 
     for (const entry of entries) {
         try {
-            await fetch('http://localhost:3001/api/analyses', {
+            await fetch('http://localhost:3000/api/analyses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -200,7 +200,7 @@ export async function migrateHistoryToServer(): Promise<number> {
             });
             migrated_count++;
         } catch (err) {
-            console.error('Failed to migrate entry:', entry.filename, err);
+            console.warn('Failed to migrate entry:', entry.filename, err);
         }
     }
 

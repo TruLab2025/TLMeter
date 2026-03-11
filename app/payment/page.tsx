@@ -15,13 +15,16 @@ const PLANS_CONFIG = {
         description: 'Podstawowa analiza dla Twojego studio.',
         color: '#818cf8',
         features: [
-            '✅ Analiza plików WAV i AIFF',
-            '✅ 4 główne metryki miksu',
-            '✅ 6 profili muzyki',
+            '✅ Analiza plików WAV/AIFF',
+            '✅ Rozmiar pliku do 40 MB',
+            '✅ 6 głównych metryk miksu',
+            '✅ 6 profili muzyki+tryb auto',
             '✅ Podstawowe porady DAW',
-            '✅ Eksport RAW JSON',
-            '❌ Brak reklam w analizach',
+            '✅ Eksport LITE JSON',
             '❌ Zaawansowane porady DAW',
+            '❌ Historia analiz',
+            '❌ Porównania analiz / referencji',
+            '• 1 urządzenie',
             '**Bez limitu analiz**',
         ]
     },
@@ -33,10 +36,13 @@ const PLANS_CONFIG = {
         color: 'var(--accent)',
         features: [
             '✅ Wszystko z Lite',
-            '✅ 6 głównych metryk miksu',
-            '✅ 12 profili muzyki',
+            '✅ Analiza plików FLAC/OGG',
+            '✅ Rozmiar pliku do 80 MB',
+            '✅ 6 metryk miksu+diagnoza',
+            '✅ 12 profili muzyki+tryb auto',
             '✅ Zaawansowane porady DAW',
-            '✅ Eksport CORE JSON + RAW JSON',
+            '✅ Eksport PRO JSON',
+            '✅ Historia ostatniej analizy',
             '✅ Porównanie z ostatnią analizą',
             '• 2 urządzenia',
             '**Bez limitu analiz**',
@@ -50,31 +56,35 @@ const PLANS_CONFIG = {
         color: '#f59e0b',
         features: [
             '✅ Wszystko z Pro',
-            '✅ Wszystkie metryki miksu',
-            '✅ Wszystkie profile muzyczne',
-            '✅ Historia ostatnich analiz',
-            '✅ Porównanie z referencją',
+            '✅ Analiza wielu typów plików',
+            '✅ Rozmiar pliku do 100 MB',
+            '✅ Komplet metryk miksu+diagnoza',
+            '✅ Komplet profili myzyki+tryb auto',
+            '✅ Zaawansowane porady DAW',
+            '✅ Eksport PREM JSON',
+            '✅ Pełna historia analiz',
+            '✅ Porównania analiz / referencji',
             '• 3 urządzenia',
-            '• Priorytetowe wsparcie',
             '**Bez limitu analiz**',
         ]
     }
 };
 
 const COMPARISON = [
-    { name: 'Analiza plików WAV i AIFF', free: '❌', lite: '✅', pro: '✅', premium: '✅' },
-    { name: 'Analiza plików MP3 i AAC', free: '✅', lite: '❌', pro: '❌', premium: '❌' },
-    { name: 'Główne metryki miksu', free: '4', lite: '4', pro: '6', premium: 'All' },
-    { name: 'Profile muzyki', free: '3', lite: '6', pro: '12', premium: 'All' },
-    { name: 'Podstawowe porady DAW', free: '✅', lite: '✅', pro: '❌', premium: '❌' },
+    { name: 'Rozmiar pliku do', free: '5 MB', lite: '40 MB', pro: '80 MB', premium: '100 MB' },
+    { name: 'Analiza plików MP3/AAC/M4A', free: '✅', lite: '✅', pro: '✅', premium: '✅' },
+    { name: 'Analiza plików WAV/AIFF', free: '❌', lite: '✅', pro: '✅', premium: '✅' },
+    { name: 'Analiza plików FLAC/OGG', free: '❌', lite: '❌', pro: '✅', premium: '✅' },
+    { name: 'Główne metryki miksu', free: '4', lite: '6', pro: '6', premium: 'Komplet' },
+    { name: 'Profile muzyki', free: '3', lite: '6', pro: '12', premium: 'Komplet' },
+    { name: 'Wykrywanie stylu muzycznego', free: '❌', lite: '✅', pro: '✅', premium: '✅' },
+    { name: 'Podstawowe porady DAW', free: '✅', lite: '✅', pro: '-', premium: '-' },
     { name: 'Zaawansowane porady DAW', free: '❌', lite: '❌', pro: '✅', premium: '✅' },
-    { name: 'Eksport analizy do JSON', free: 'Raw JSON', lite: 'Raw JSON', pro: 'Core JSON', premium: 'Core JSON' },
-    { name: 'Brak reklam w analizach', free: '❌', lite: '❌', pro: '✅', premium: '✅' },
-    { name: 'Historia ostatnich analiz', free: '❌', lite: '❌', pro: '❌', premium: '✅' },
-    { name: 'Historia ostatniej analizy', free: '❌', lite: '❌', pro: '✅', premium: '✅' },
-    { name: 'Porównanie z referencją', free: '❌', lite: '❌', pro: '❌', premium: '✅' },
+    { name: 'Eksport analizy do JSON', free: 'FREE JSON', lite: 'LITE JSON', pro: 'PRO JSON', premium: 'PREM JSON' },
+    { name: 'Historia analiz', free: '❌', lite: '❌', pro: 'Ostatnia', premium: 'Pełna' },
+    { name: 'Porównanie z ostatnią analizą', free: '❌', lite: '❌', pro: '✅', premium: '✅' },
+    { name: 'Porównania analiz/referencji', free: '❌', lite: '❌', pro: '❌', premium: '✅' },
     { name: 'Urządzenia', free: '1', lite: '1', pro: '2', premium: '3' },
-    { name: 'Priorytetowe wsparcie', free: '❌', lite: '❌', pro: '❌', premium: '✅' },
     { name: 'Bez limitu analiz', free: '✅', lite: '✅', pro: '✅', premium: '✅' },
 ];
 
@@ -122,7 +132,7 @@ function PaymentContent() {
 
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:3001/api/payment/checkout', {
+            const response = await fetch('http://localhost:3000/api/payment/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, plan: planId }),
@@ -156,7 +166,7 @@ function PaymentContent() {
             setLoading(true);
             setWebhookPending(true);
             try {
-                const response = await fetch(`http://localhost:3001/api/payment/status/${encodeURIComponent(callbackTx)}`);
+                const response = await fetch(`http://localhost:3000/api/payment/status/${encodeURIComponent(callbackTx)}`);
                 const data = await response.json();
 
                 if (response.ok && data?.status === 'active' && data?.code) {
@@ -303,7 +313,7 @@ function PaymentContent() {
                         </div>
 
                         {/* Detailed Comparison Table */}
-                        <div className="card overflow-hidden bg-[var(--bg-card)] border-[var(--border)]">
+                        <div id="compare-plans" className="card overflow-hidden bg-[var(--bg-card)] border-[var(--border)] scroll-mt-24">
                             <div className="p-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] font-mono">Porównanie wszystkich planów</h3>
                             </div>

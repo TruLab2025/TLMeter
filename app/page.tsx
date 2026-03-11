@@ -1,7 +1,273 @@
-'use client';
+"use client";
+  const spectralData = {
+    bands_hz: [40,80,120,250,500,1000,2000,4000,8000,12000],
+    original_mix: {
+      label: "Oryginał",
+      lufs: -14.05,
+      true_peak_db: -1.0,
+      lra: 6.2,
+      spectral_balance: [
+        0.82,0.76,0.71,0.63,0.59,0.55,0.52,0.49,0.46,0.43
+      ]
+    },
+    processed_mix: {
+      label: "TL Meter",
+      lufs: -14.02,
+      true_peak_db: -1.0,
+      lra: 5.8,
+      spectral_balance: [
+        0.66,0.63,0.60,0.61,0.60,0.58,0.56,0.53,0.50,0.48
+      ]
+    }
+  };
+
+  // Funkcja do generowania punktów SVG dla line chart
+  function getSpectralPoints(bal, width, height) {
+    const len = bal.length;
+    return bal.map((v, i) => {
+      const x = (i / (len - 1)) * width;
+      const y = height - v * (height - 20);
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+  }
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import SpectralBalanceSection from "@/components/SpectralBalanceSection";
+
+// Komponent morphingu linii wykresu
+function MorphingLineChart({ original, processed, bands, bypass }) {
+  const [points, setPoints] = useState(original);
+  const animRef = useRef();
+  useEffect(() => {
+    let start = null;
+    const duration = 300;
+    const from = points;
+    const to = bypass ? processed : original;
+    function animate(ts) {
+      if (!start) start = ts;
+      const t = Math.min((ts - start) / duration, 1);
+      const next = from.map((v, i) => v + (to[i] - v) * t);
+      setPoints(next);
+      if (t < 1) animRef.current = requestAnimationFrame(animate);
+    }
+    cancelAnimationFrame(animRef.current);
+    animRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animRef.current);
+    // eslint-disable-next-line
+  }, [bypass]);
+  // SVG points
+  function getPoints(arr, width, height) {
+    const len = arr.length;
+    return arr.map((v, i) => {
+      const x = (i / (len - 1)) * width;
+      const y = height - v * (height - 20);
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+  }
+  return (
+    <svg width="100%" height="180" viewBox="0 0 700 180" style={{ maxWidth: 900 }}>
+      <polyline
+        points={getPoints(points, 680, 120)}
+        stroke={bypass ? "#6f3cf7" : "#3cf"}
+        strokeWidth={4}
+        fill="none"
+        opacity={1}
+        style={{ transition: "stroke 0.3s" }}
+      />
+      {/* Oś X – podpisy zakresów */}
+      {[
+        {hz:40, label:"Bass", x:0},
+        {hz:250, label:"Low-Mid", x:((3/9)*680)},
+        {hz:1000, label:"Mid", x:((5/9)*680)},
+        {hz:4000, label:"Presence", x:((7/9)*680)},
+        {hz:12000, label:"Air", x:680}
+      ].map(({hz,label,x}) => (
+        <text key={hz} x={x} y={155} fontSize="15" textAnchor="middle" fill="#222" fontWeight="bold">{label}</text>
+      ))}
+      {/* Oś X – podpisy Hz */}
+      {[
+        {hz:40, x:0},
+        {hz:250, x:((3/9)*680)},
+        {hz:1000, x:((5/9)*680)},
+        {hz:4000, x:((7/9)*680)},
+        {hz:12000, x:680}
+      ].map(({hz,x}) => (
+        <text key={hz+"hz"} x={x} y={172} fontSize="13" textAnchor="middle" fill="#888">{hz>=1000 ? `${hz/1000}kHz` : `${hz}Hz`}</text>
+      ))}
+      {/* Legenda */}
+      <rect x="20" y="10" width="18" height="6" fill="#3cf" rx="2" />
+      <text x="45" y="16" fontSize="13" fill="#222">🔵 Original Mix</text>
+      <rect x="170" y="10" width="18" height="6" fill="#6f3cf7" rx="2" />
+      <text x="195" y="16" fontSize="13" fill="#222">🟣 TL Meter Optimized</text>
+    </svg>
+  );
+}
+
+// Komponent morphingu karty
+function MorphingCard({ label, value, mix, color, desc }) {
+  return (
+    <div className="backdrop-blur-md bg-gradient-to-br from-[#eaf6ff]/70 via-white/60 to-[#f0eaff]/70 rounded-2xl shadow-xl p-5 flex flex-col items-center min-w-[150px] border border-[#6f3cf7]/20 transition-all duration-300">
+      <span className="font-extrabold text-lg mb-2 text-[#222] tracking-tight">{label}</span>
+      <span className="font-mono text-2xl font-extrabold mb-1" style={{color}}>{mix} {value}</span>
+      <span className="text-sm mt-2 text-[#6f3cf7] font-semibold">{desc}</span>
+    </div>
+  );
+}
+// Komponent porównania A/B
+function ABComparisonSection() {
+  const [playing, setPlaying] = useState(false);
+  const [bypass, setBypass] = useState(false); // false = oryginał, true = po TL Meter
+  const [audioError, setAudioError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const audioRef = useRef(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [pendingBypass, setPendingBypass] = useState(null); // null lub true/false
+  // Przykładowe dane z analizy (można podmienić na API)
+  const abData = {
+    comparison: {
+      segment_seconds: 10,
+      normalized_to_lufs: -14,
+      note: "Odtwarzanie znormalizowane do -14 LUFS dla uczciwego porównania"
+    },
+    original: {
+      label: "Oryginał",
+      integrated_lufs: -14.02,
+      true_peak_db: -1.0,
+      crest_factor_db: 13.0,
+      lra: 6.2,
+      waveform: [
+        0.42,0.48,0.52,0.55,0.53,0.49,0.44,0.40,0.37,0.39,
+        0.43,0.47,0.51,0.56,0.60,0.63,0.65,0.64,0.61,0.58,
+        0.54,0.50,0.46,0.41,0.36,0.32,0.28,0.24,0.21,0.18,
+        0.16,0.14,0.13,0.12,0.11,0.10,0.11,0.13,0.15,0.18,
+        0.22,0.26,0.31,0.36,0.40,0.44,0.47,0.49,0.50
+      ]
+    },
+    processed: {
+      label: "TL Meter",
+      integrated_lufs: -14.02,
+      true_peak_db: -1.0,
+      crest_factor_db: 12.6,
+      lra: 5.8,
+      waveform: [
+        0.40,0.45,0.50,0.54,0.58,0.60,0.62,0.63,0.64,0.63,
+        0.61,0.59,0.56,0.52,0.48,0.44,0.39,0.34,0.29,0.24,
+        0.21,0.18,0.16,0.14,0.12,0.11,0.10,0.09,0.09,0.10,
+        0.12,0.14,0.17,0.20,0.24,0.28,0.33,0.38,0.43,0.47,
+        0.51,0.55,0.58,0.61,0.64,0.67,0.69,0.71,0.73
+      ]
+    }
+  };
+
+  // Funkcja do generowania punktów SVG dla waveformu
+  function getWaveformPoints(waveform, width, height) {
+    const len = waveform.length;
+    return waveform.map((v, i) => {
+      const x = (i / (len - 1)) * width;
+      const y = height / 2 - v * (height / 2 - 4);
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+  }
+  // Demo: dwa pliki audio
+  const originalUrl = "/demo/original.mp3"; // wrzuć plik do public/demo/original.mp3
+  const processedUrl = "/demo/processed.mp3"; // wrzuć plik do public/demo/processed.mp3
+
+  function handlePlay() {
+    setPlaying((p) => {
+      const next = !p;
+      if (audioRef.current) {
+        setAudioError("");
+        // setLoading(true) tylko jeśli audio nie jest już gotowe
+        if (next && audioRef.current.readyState < 3) {
+          setLoading(true);
+        }
+        if (next) {
+          audioRef.current.play().catch((e) => {
+            setAudioError("Nie można odtworzyć dźwięku. Sprawdź plik lub przeglądarkę.");
+            console.error("Audio play failed:", e);
+          }).finally(() => setLoading(false));
+        } else {
+          audioRef.current.pause();
+          setLoading(false);
+        }
+      }
+      return next;
+    });
+  }
+
+  // Płynne przełączanie A/B bez resetu czasu
+  function handleBypass() {
+    if (!audioRef.current) return;
+    setAudioError("");
+    // NIE ustawiaj loading przy przełączaniu A/B – UX: nie migaj Play
+    const time = audioRef.current.currentTime;
+    setCurrentTime(time);
+    setPendingBypass(!bypass); // zapamiętaj, że czekamy na przełączenie
+    setBypass((b) => !b);
+    // Odtwarzanie i ustawienie czasu nastąpi w onLoadedMetadata
+  }
+
+  // Po załadowaniu nowego pliku ustaw currentTime i odtwórz jeśli trzeba
+  function handleLoadedMetadata() {
+    if (audioRef.current) {
+      if (pendingBypass !== null) {
+        audioRef.current.currentTime = currentTime;
+        if (playing) {
+          setLoading(true);
+          audioRef.current.play().catch((e) => {
+            setAudioError("Nie można odtworzyć dźwięku po przełączeniu. Sprawdź plik lub przeglądarkę.");
+            console.error("Audio play failed after bypass:", e);
+          }).finally(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+        setPendingBypass(null);
+      }
+    }
+  }
+  // Płynne przełączanie A/B bez resetu czasu
+  function handleBypass() {
+    if (!audioRef.current) return;
+    setAudioError("");
+    setLoading(true);
+    const wasPlaying = !audioRef.current.paused;
+    const time = audioRef.current.currentTime;
+    setCurrentTime(time);
+    setPendingBypass(!bypass); // zapamiętaj, że czekamy na przełączenie
+    setBypass((b) => !b);
+    // Odtwarzanie i ustawienie czasu nastąpi w onLoadedMetadata
+  }
+
+  function handleEnded() {
+    setPlaying(false);
+  }
+
+  return (
+    <section className="max-w-3xl mx-auto px-4 py-6" id="ab-compare">
+      <h2 className="text-2xl font-bold mb-3 text-center">Porównanie miksów</h2>
+      <p className="text-[var(--text-secondary)] mb-4 text-center max-w-2xl mx-auto">
+        Przełączaj w czasie rzeczywistym między miksem wyprodukowanym bez analizy plików muzycznych i sugestii producenckich a wersją miksu po analizie TL Meter i wykorzystaniu sugestii naprawy procesów mikserskich w DAW. Odtwarzaj i porównuj, aby usłyszeć różnicę!
+      </p>
+
+      <div className="flex flex-col items-center gap-4">
+        <audio
+          ref={audioRef}
+          src={bypass ? processedUrl : originalUrl}
+          onEnded={handleEnded}
+          onLoadedMetadata={handleLoadedMetadata}
+        />
+        {/* Sekcja Spectral Balance 1:1 z referencją */}
+        <SpectralBalanceSection />
+      </div>
+      <div className="flex flex-col items-center mt-2 w-full">
+        {audioError && (
+          <div className="text-red-600 text-sm mt-2 text-center">{audioError}</div>
+        )}
+      </div>
+    </section>
+  );
+}
 import BrandLogo from "@/components/BrandLogo";
 
 const howItWorks = [
@@ -80,13 +346,16 @@ const plans = [
     price: "0",
     color: "var(--text-secondary)",
     features: [
-      "✅ Analiza plików MP3 i AAC",
+      "✅ Analiza plików MP3/AAC/M4A",
+      "✅ Rozmiar pliku do 5 MB",
       "✅ 4 główne metryki miksu",
       "✅ 3 profile muzyczne",
-      "✅ Podstawowe porady DAW",
-      "✅ Eksport RAW JSON",
-      "❌ Analiza plików WAV i AIFF",
+      "✅Podstawowe porady DAW",
+      "✅ Eksport FREE JSON",
+      "❌ Porady DAW",
+      "❌ WAV/AIFF/FLAC",
       "❌ Historia analiz",
+      "❌ Porównania analiz / referencji",
       "**Bez limitu analiz**",
     ],
     cta: "Zacznij za darmo",
@@ -99,13 +368,16 @@ const plans = [
     price: "9",
     color: "#818cf8",
     features: [
-      "✅ Analiza plików WAV i AIFF",
-      "✅ 4 główne metryki miksu",
-      "✅ 6 profili muzyki",
+      "✅ Analiza plików WAV/AIFF",
+      "✅ Rozmiar pliku do 40 MB",
+      "✅ 6 głównych metryk miksu",
+      "✅ 6 profili muzyki+tryb auto",
       "✅ Podstawowe porady DAW",
-      "✅ Eksport RAW JSON",
-      "❌ Brak reklam w analizach",
+      "✅ Eksport LITE JSON",
       "❌ Zaawansowane porady DAW",
+      "❌ Historia analiz",
+      "❌ Porównania analiz / referencji",
+      "• 1 urządzenie",
       "**Bez limitu analiz**",
     ],
     cta: "Kup Lite",
@@ -119,10 +391,13 @@ const plans = [
     color: "var(--accent)",
     features: [
       "✅ Wszystko z Lite",
-      "✅ 6 głównych metryk miksu",
-      "✅ 12 profili muzyki",
+      "✅ Analiza plików FLAC/OGG",
+      "✅ Rozmiar pliku do 80 MB",
+      "✅ 6 metryk miksu+diagnoza",
+      "✅ 12 profili muzyki+tryb auto",
       "✅ Zaawansowane porady DAW",
-      "✅ Eksport CORE JSON",
+      "✅ Eksport PRO JSON",
+      "✅ Historia ostatniej analizy",
       "✅ Porównanie z ostatnią analizą",
       "• 2 urządzenia",
       "**Bez limitu analiz**",
@@ -138,12 +413,15 @@ const plans = [
     color: "#f59e0b",
     features: [
       "✅ Wszystko z Pro",
-      "✅ Wszystkie metryki miksu",
-      "✅ Wszystkie profile",
-      "✅ Historia ostatnich analiz",
-      "✅ Porównanie z referencją",
+      "✅ Analiza wielu typów plików",
+      "✅ Rozmiar pliku do 100 MB",
+      "✅ Komplet metryk miksu+diagnoza",
+      "✅ Komplet profili myzyki+tryb auto",
+      "✅ Zaawansowane porady DAW",
+      "✅ Eksport PREM JSON",
+      "✅ Pełna historia analiz",
+      "✅ Porównania analiz / referencji",
       "• 3 urządzenia",
-      "• Priorytetowe wsparcie",
       "**Bez limitu analiz**",
     ],
     cta: "Kup Premium",
@@ -185,6 +463,14 @@ const faq = [
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [analysisCount, setAnalysisCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/api/analyses/count")
+      .then(res => res.json())
+      .then(data => setAnalysisCount(data.count))
+      .catch(() => setAnalysisCount(null));
+  }, []);
 
   return (
     <main className="min-h-screen grid-texture">
@@ -244,6 +530,11 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
+        {analysisCount !== null && (
+          <div className="mb-4 text-lg text-[var(--accent)] font-semibold">
+            <span className="glow-text">Wykonano już {analysisCount} analiz!</span>
+          </div>
+        )}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--border-glow)] bg-[var(--bg-card)] text-xs text-[var(--accent)] mb-8">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"></span>
           Analiza działa lokalnie i chroni Twoją twórczość
@@ -281,48 +572,54 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Mock screen view */}
-      <section className="max-w-5xl mx-auto px-6 pb-24">
-        <div className="card p-8 bg-[var(--bg-card)] border-[var(--border)] relative overflow-hidden glow-accent shadow-[0_0_50px_rgba(0,212,255,0.1)]">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="w-3 h-3 rounded-full bg-[var(--bad)]"></div>
-            <div className="w-3 h-3 rounded-full bg-[var(--warn)]"></div>
-            <div className="w-3 h-3 rounded-full bg-[var(--ok)]"></div>
-            <span className="ml-3 text-xs text-[var(--text-muted)] font-mono">Przykładowy zrzut analizy Twojego miksu</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { label: "Loudness", value: "-26.4 LUFS", status: "bad", detail: "True Peak: -5.9 dBTP | LRA: 1.2 LU", score: 20, rec: "Loudness: Tu leży największy problem Twojego miksu. Drastycznie odbiega od normy profilu Rock." },
-              { label: "Low End Balance", value: "36% low", status: "warn", detail: "Mid: 8% | High: 2%", score: 65, rec: "Parametr jest blisko ideału, ale wymaga drobnej korekty (ok. 1-2dB) dla lepszej klarowności." },
-              { label: "Midrange Density", value: "44% mid", status: "ok", detail: "Flatness: 0.88 | HFC: 0.02", score: 96, rec: "Środek pasma jest nasycony i selektywny. Instrumenty mają swoje miejsce w miksie." },
-              { label: "Harshness", value: "2% high", status: "ok", detail: "HFC: 0.01", score: 98, rec: "Idealnie! Pasmo wysokich częstotliwości i sybilanty są pod pełną kontrolą." },
-            ].map((m) => (
-              <div key={m.label} className="card p-6 border-[var(--border)] relative overflow-hidden bg-[var(--bg-surface)]">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">{m.label}</div>
-                  <div className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded border border-[var(--border)]`} style={{ color: `var(--${m.status})` }}>
-                    {m.status === "ok" ? "Idealnie" : m.status === "warn" ? "Ostrzeżenie" : "Problem"}
+
+      {/* Mock screen view + Counter perfectly centered */}
+      <section className="max-w-5xl mx-auto px-6 pb-0">
+        <div className="flex flex-col items-stretch justify-center gap-0">
+          {/* Mock analysis card */}
+          <div className="card p-8 bg-[var(--bg-card)] border-[var(--border)] relative overflow-hidden glow-accent shadow-[0_0_50px_rgba(0,212,255,0.1)]">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-3 h-3 rounded-full bg-[var(--bad)]"></div>
+              <div className="w-3 h-3 rounded-full bg-[var(--warn)]"></div>
+              <div className="w-3 h-3 rounded-full bg-[var(--ok)]"></div>
+              <span className="ml-3 text-xs text-[var(--text-muted)] font-mono">Przykładowy zrzut analizy Twojego miksu</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { label: "Loudness", value: "-26.4 LUFS", status: "bad", detail: "True Peak: -5.9 dBTP | LRA: 1.2 LU", score: 20, rec: "Loudness: Tu leży największy problem Twojego miksu. Drastycznie odbiega od normy profilu Rock." },
+                { label: "Low End Balance", value: "36% low", status: "warn", detail: "Mid: 8% | High: 2%", score: 65, rec: "Parametr jest blisko ideału, ale wymaga drobnej korekty (ok. 1-2dB) dla lepszej klarowności." },
+                { label: "Midrange Density", value: "44% mid", status: "ok", detail: "Flatness: 0.88 | HFC: 0.02", score: 96, rec: "Środek pasma jest nasycony i selektywny. Instrumenty mają swoje miejsce w miksie." },
+                { label: "Harshness", value: "2% high", status: "ok", detail: "HFC: 0.01", score: 98, rec: "Idealnie! Pasmo wysokich częstotliwości i sybilanty są pod pełną kontrolą." },
+              ].map((m) => (
+                <div key={m.label} className="card p-6 border-[var(--border)] relative overflow-hidden bg-[var(--bg-surface)]">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">{m.label}</div>
+                    <div className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded border border-[var(--border)]`} style={{ color: `var(--${m.status})` }}>
+                      {m.status === "ok" ? "Idealnie" : m.status === "warn" ? "Ostrzeżenie" : "Problem"}
+                    </div>
+                  </div>
+                  <div className="text-3xl font-mono font-bold mb-4" style={{ color: `var(--${m.status})` }}>
+                    {m.value}
+                  </div>
+                  <div className="meter-track h-1.5 w-full overflow-hidden mb-3">
+                    <div
+                      className="meter-fill h-full"
+                      style={{ width: `${m.score}%`, backgroundColor: `var(--${m.status})` }}
+                    ></div>
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] font-mono mb-4">{m.detail}</div>
+                  <div className="mt-auto pt-3 border-t border-[var(--border)] text-[10px] leading-relaxed">
+                    <span className="font-bold text-[var(--accent)]">Rekomendacja:</span> <span className="text-[var(--text-secondary)]">{m.rec}</span>
                   </div>
                 </div>
-
-                <div className="text-3xl font-mono font-bold mb-4" style={{ color: `var(--${m.status})` }}>
-                  {m.value}
-                </div>
-
-                <div className="meter-track h-1.5 w-full overflow-hidden mb-3">
-                  <div
-                    className="meter-fill h-full"
-                    style={{ width: `${m.score}%`, backgroundColor: `var(--${m.status})` }}
-                  ></div>
-                </div>
-
-                <div className="text-[10px] text-[var(--text-muted)] font-mono mb-4">{m.detail}</div>
-
-                <div className="mt-auto pt-3 border-t border-[var(--border)] text-[10px] leading-relaxed">
-                  <span className="font-bold text-[var(--accent)]">Rekomendacja:</span> <span className="text-[var(--text-secondary)]">{m.rec}</span>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+          {/* Counter perfectly centered between card and next section */}
+          <div className="flex justify-center" style={{marginTop: '64px', marginBottom: '64px'}}>
+            <div className="rounded-lg px-8 py-4 text-xl font-semibold text-[#00cfff] bg-[#0a1929] border border-[#00cfff]/40 shadow-lg backdrop-blur-sm flex items-center justify-center" style={{letterSpacing: '0.01em', minWidth: 420, height: '80px'}}>
+              Użytkownicy TL Meter wykonali już <span className="tabular-nums font-extrabold text-4xl md:text-5xl text-yellow-300 drop-shadow-lg mx-4">{analysisCount ?? 0}</span> analiz
+            </div>
           </div>
         </div>
       </section>
@@ -421,10 +718,22 @@ export default function LandingPage() {
         </div>
       </section>
 
+
+      {/* Porównanie A/B pod sekcją Problem → Rozwiązanie */}
+      <div className="mt-16">
+        <ABComparisonSection />
+      </div>
+
+
       {/* Pricing */}
       <section id="pricing" className="max-w-6xl mx-auto px-6 py-20 scroll-mt-24">
         <h2 className="text-3xl font-bold text-center mb-4">Cennik TL Meter</h2>
         <p className="text-center text-[var(--text-secondary)] mb-12">Wybierz plan idealny do Twoich potrzeb. Proste zasady, pełna kontrola nad parametrami miksu.</p>
+        <div className="flex justify-center mb-8">
+          <Link href="/payment?plan=pro#compare-plans" className="btn btn-outline px-5 py-2 text-sm">
+            Porównaj plany
+          </Link>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {plans.map((plan) => (
             <div key={plan.name} className={`card p-6 flex flex-col relative ${plan.highlight ? "border-[var(--accent)] shadow-[0_4px_20px_rgba(0,212,255,0.15)] glow-accent" : ""}`}>
@@ -442,7 +751,7 @@ export default function LandingPage() {
                 {plan.features.map((f, i) => (
                   <li key={i} className="text-[13px] text-[var(--text-secondary)] flex items-start gap-2 leading-tight">
                     <span className="shrink-0">{f.startsWith('✅') ? '✅' : f.startsWith('❌') ? '❌' : f.startsWith('•') ? '•' : '•'}</span>
-                    <span className={`${f.includes('**') ? 'font-bold text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4' : f.startsWith('•') ? 'text-[var(--text-muted)]' : ''} ${f.includes('JSON') ? 'break-keep' : ''}`}>
+                    <span className={`${f.includes('**') ? 'font-bold text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4' : f.startsWith('•') ? 'text-[var(--text-muted)]' : ''} ${f.includes('JSON') ? 'break-keep' : ''} ${f.includes('+') ? 'whitespace-nowrap' : ''}`}>
                       {f.replace(/^[✅❌•]\s*/, '').replace(/\*\*/g, '')}
                     </span>
                   </li>
