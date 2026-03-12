@@ -1,0 +1,28 @@
+/* mobile.css: Only mobile overrides, all inside media queries */
+
+@media (max-width: 768px) {
+  .spectral-chart {
+    height: 180px;
+    border-radius: 0 0 14px 14px;
+  }
+  .analysis {
+    padding: 20px;
+  }
+  .spectral-canvas {
+    height: 180px;
+  }
+  .metrics {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .bands {
+    font-size: 12px;
+  }
+  .metric-card {
+    padding: 16px;
+  }
+  .audio-player {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

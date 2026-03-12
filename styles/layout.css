@@ -1,0 +1,35 @@
+/* layout.css: Desktop-first layout structure */
+
+.analysis {
+  max-width: 1200px;
+  margin: auto;
+  padding: 40px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+}
+
+.spectral-section {
+  margin-bottom: 40px;
+}
+
+.spectral-canvas {
+  width: 100%;
+  height: 320px;
+  display: block;
+}
+
+.bands {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  text-align: center;
+  margin-top: 12px;
+}
+
+.metric-card {
+  padding: 30px;
+  border-radius: 18px;
+}

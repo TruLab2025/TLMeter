@@ -1,0 +1,124 @@
+/* components.css */
+
+.spectral-balance-container{
+  width:100%;
+  position:relative;
+}
+
+/* sekcja analizy */
+.analysis-container{
+  max-width:1200px;
+  margin:0 auto;
+  width:100%;
+  padding:0 24px;
+  box-sizing:border-box;
+}
+
+/* wrapper wykresu */
+.spectral-wrapper{
+  width:100%;
+  max-width:1200px;
+  margin:0 auto;
+  display:block;
+}
+
+/* wykres */
+.spectral-chart{
+  width:100%;
+  height:clamp(180px,30vw,320px);
+  border-radius:18px;
+  overflow:hidden;
+  position:relative;
+}
+
+/* canvas */
+.spectral-chart canvas{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+/* etykiety pasm */
+.bands{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-top:18px;
+  padding:0 6px;
+  box-sizing:border-box;
+}
+
+/* pojedyncza etykieta */
+.band-label{
+  flex:1;
+  text-align:center;
+  font-weight:600;
+  color:#b7d6f7;
+  font-size:16px;
+}
+
+/* Hz */
+.band-label .hz{
+  display:block;
+  margin-top:2px;
+  font-size:13px;
+  color:#7fa7d6;
+  font-weight:400;
+}
+
+/* mobile */
+@media (max-width:640px){
+
+.spectral-chart{
+  height:180px;
+}
+
+.band-label{
+  font-size:13px;
+}
+
+.band-label .hz{
+  font-size:11px;
+}
+
+}
+
+/* cards */
+.metric-card{
+  background:#181828;
+  box-shadow:0 8px 32px rgba(46,230,255,0.10);
+  border:1px solid #2EE6FF33;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+/* player */
+.audio-player{
+  display:flex;
+  gap:24px;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:32px;
+}
+
+.audio-player .play-btn{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  border:2px solid #2EE6FF;
+  background:#2EE6FF;
+  color:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.metrics-grid {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  gap: 32px;
+  margin-top: 40px;
+}

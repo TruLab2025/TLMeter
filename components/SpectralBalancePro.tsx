@@ -233,6 +233,8 @@ export default function SpectralBalancePro({ spectrum = [], progressTop = 1, pro
           </div>
         ))}
       </div>
+      {/* Puste miejsce pod etykietami osi X */}
+      {/* (Usunięto wiersz z kolorowymi napisami Bass ↓, Presence ↑, Air ↑) */}
     </div>
   );
 }

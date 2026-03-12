@@ -93,14 +93,50 @@ export default function SpectralBalanceSection() {
         </div>
       </div>
 
-      {/* Wskaźniki Bass/Presence/Air – z odstępem */}
-      <div style={{height:72}} />
-      <div className="flex flex-row gap-6 mb-6 justify-center">
-        <span className="text-[#27D3FF] font-bold text-base flex items-center gap-1" style={{marginTop:12, marginBottom:4}}>Bass <span className="text-xl">↓</span></span>
-        <span className="text-[#C93BFF] font-bold text-base flex items-center gap-1" style={{marginTop:12, marginBottom:4}}>Presence <span className="text-xl">↑</span></span>
-        <span className="text-[#C93BFF] font-bold text-base flex items-center gap-1" style={{marginTop:12, marginBottom:4}}>Air <span className="text-xl">↑</span></span>
+      {/* Usunięto wiersz z kolorowymi napisami Bass ↓, Presence ↑, Air ↑ */}
+      {/* Przyciski Play, Przed, Potem – przeniesione pod wykres */}
+      <div className="flex flex-row gap-8 mt-28 mb-16 items-center justify-center">
+        <button
+          onClick={playing ? handleStop : handlePlay}
+          className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-cyan-400 bg-cyan-400 text-black shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+          aria-label={playing ? "Pauza" : "Odtwórz"}
+        >
+          {playing ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="black" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="black" viewBox="0 0 24 24"><path d="M7 5v14l11-7L7 5z"/></svg>
+          )}
+        </button>
+        <button
+          onClick={() => handleSwitch("original")}
+          className={`btn text-sm py-2 px-4 flex justify-center items-center ${active === "original" ? "bg-cyan-400 text-black" : "bg-transparent text-cyan-400"}`}
+          style={{
+            fontWeight:500,
+            borderRadius:8,
+            minWidth:120,
+            fontSize:14,
+            boxShadow: active === "original" ? "0 0 12px #2EE6FF33" : "none",
+            border: active === "original" ? "none" : "0.5px solid #2EE6FF"
+          }}
+        >
+          Przed
+        </button>
+        <button
+          onClick={() => handleSwitch("optimized")}
+          className={`btn text-sm py-2 px-4 flex justify-center items-center ${active === "optimized" ? "bg-cyan-400 text-black" : "bg-transparent text-cyan-400"}`}
+          style={{
+            fontWeight:500,
+            borderRadius:8,
+            minWidth:120,
+            fontSize:14,
+            boxShadow: active === "optimized" ? "0 0 12px #2EE6FF33" : "none",
+            border: active === "optimized" ? "none" : "0.5px solid #2EE6FF"
+          }}
+          disabled={loading}
+        >
+          Potem
+        </button>
       </div>
-      <div style={{height:48}} />
 
       {/* Karty metryk – odsunięte od wykresu i wskaźników */}
       <div className="flex flex-row gap-8 justify-center w-full max-w-5xl mb-10 mt-0">
@@ -148,50 +184,6 @@ export default function SpectralBalanceSection() {
         </span>
       </div>
       <div className="h-7" />
-      {/* Przyciski sterujące audio i A/B (trzy guziki pod całą sekcją) */}
-      <div className="flex flex-row gap-6 mt-2 mb-2 items-center">
-        <button
-          onClick={playing ? handleStop : handlePlay}
-          className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-cyan-400 bg-cyan-400 text-black shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
-          aria-label={playing ? "Pauza" : "Odtwórz"}
-          // ...existing code...
-        >
-          {playing ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="black" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="black" viewBox="0 0 24 24"><path d="M7 5v14l11-7L7 5z"/></svg>
-          )}
-        </button>
-        <button
-          onClick={() => handleSwitch("original")}
-          className={`btn text-sm py-2 px-4 flex justify-center items-center ${active === "original" ? "bg-cyan-400 text-black" : "bg-transparent text-cyan-400"}`}
-          style={{
-            fontWeight:500,
-            borderRadius:8,
-            minWidth:120,
-            fontSize:14,
-            boxShadow: active === "original" ? "0 0 12px #2EE6FF33" : "none",
-            border: active === "original" ? "none" : "0.5px solid #2EE6FF"
-          }}
-        >
-          Przed
-        </button>
-        <button
-          onClick={() => handleSwitch("optimized")}
-          className={`btn text-sm py-2 px-4 flex justify-center items-center ${active === "optimized" ? "bg-cyan-400 text-black" : "bg-transparent text-cyan-400"}`}
-          style={{
-            fontWeight:500,
-            borderRadius:8,
-            minWidth:120,
-            fontSize:14,
-            boxShadow: active === "optimized" ? "0 0 12px #2EE6FF33" : "none",
-            border: active === "optimized" ? "none" : "0.5px solid #2EE6FF"
-          }}
-          disabled={loading}
-        >
-          Potem
-        </button>
-      </div>
       <div className="flex flex-col items-center mt-2 w-full">
         {audioError && (
           <div className="text-red-600 text-sm mt-2 text-center">{audioError}</div>
