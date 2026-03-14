@@ -188,7 +188,7 @@ export async function migrateHistoryToServer(): Promise<number> {
 
     for (const entry of entries) {
         try {
-            await fetch('http://localhost:3000/api/analyses', {
+            await fetch('/api/analyses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

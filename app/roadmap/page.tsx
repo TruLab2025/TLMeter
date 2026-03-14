@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { migrateHistoryToServer } from "@/lib/history";
 import BrandLogo from "@/components/BrandLogo";
+import SiteFooter from "@/components/SiteFooter";
 
 const roadmapItems = [
   {
@@ -90,7 +91,7 @@ export default function RoadmapPage() {
         if (count > 0) {
           console.log(`✅ Zmigrowano ${count} analiz - przeładowuję statystyki...`);
           // Re-fetch stats after migration
-          const res = await fetch('http://localhost:3000/api/stats');
+          const res = await fetch('/api/stats');
           if (res.ok) {
             const data = await res.json();
             setStats({ total: data?.total || 0, today: data?.today || 0 });
@@ -107,7 +108,7 @@ export default function RoadmapPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://localhost:3000/api/stats');
+        const res = await fetch('/api/stats');
         if (res.ok) {
           const data = await res.json();
           setStats({
@@ -138,7 +139,7 @@ export default function RoadmapPage() {
     <main className="min-h-screen grid-texture">
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-[var(--border)] backdrop-blur-md bg-[rgba(9,11,15,0.85)]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/">
             <BrandLogo size="md" />
           </Link>
@@ -190,8 +191,18 @@ export default function RoadmapPage() {
         )}
       </nav>
 
+      <div className="max-w-6xl mx-auto px-6 pt-6">
+        <Link
+          href="/"
+          className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--text-muted)] transition-colors hover:text-[var(--accent)] md:mb-6"
+        >
+          <span aria-hidden="true">←</span>
+          <span>Powrót do strony głównej</span>
+        </Link>
+      </div>
+
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 pt-24 pb-16 text-center">
+      <section className="max-w-6xl mx-auto px-6 pt-12 pb-16 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--border-glow)] bg-[var(--bg-card)] text-xs text-[var(--accent)] mb-8">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse"></span>
           Roadmapa rozwoju produktu
@@ -323,11 +334,12 @@ export default function RoadmapPage() {
           <p className="text-[var(--text-secondary)] mb-8 max-w-2xl mx-auto">
             TL Meter rozwijamy w oparciu o feedback od producentów muzycznych. Jeśli brakuje Ci konkretnej funkcji lub masz sugestię, jak możemy ulepszyć narzędzie — daj nam znać!
           </p>
-          <div className="flex items-center justify-center gap-4">
-            <a href="mailto:contact@trulab.pl" className="btn btn-primary text-sm py-3 px-8">
-              📧 Napisz do nas
+          <div className="flex w-full flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+            <a href="mailto:contact@trulab.pl" className="btn btn-primary flex w-full items-center justify-center gap-2 text-center text-sm py-3 px-8 sm:w-auto">
+              <span aria-hidden="true">✉️</span>
+              <span>Napisz do nas</span>
             </a>
-            <Link href="/" className="btn btn-outline text-sm py-3 px-8">
+            <Link href="/" className="btn btn-outline w-full text-center text-sm py-3 px-8 sm:w-auto">
               ← Powrót na stronę główną
             </Link>
           </div>
@@ -335,16 +347,7 @@ export default function RoadmapPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--border)] py-8">
-        <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-sm text-[var(--text-muted)] gap-6">
-          <p>© 2026 TruLab | TL Meter. Profesjonalne narzędzie DSP dla domowych producentów muzyki.</p>
-          <div className="flex gap-8">
-            <Link href="/privacy" className="hover:text-[var(--text-primary)] transition-colors">Polityka prywatności</Link>
-            <Link href="/terms" className="hover:text-[var(--text-primary)] transition-colors">Regulamin</Link>
-            <a href="mailto:contact@trulab.pl" className="hover:text-[var(--text-primary)] transition-colors">Kontakt</a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter className="py-8" />
     </main>
   );
 }

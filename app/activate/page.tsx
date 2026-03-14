@@ -1,40 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { activateCode } from "@/lib/license";
 import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
-
-const howItWorks = [
-  {
-    step: "1",
-    title: "Miksujesz w DAW",
-    desc: "Pracujesz nad swoim utworem w ulubionym DAW (Ableton, Logic, Reaper, Cubase). Po skończonym etapie zgrywasz miks (bounce) do formatu WAV, AIFF lub MP3."
-  },
-  {
-    step: "2",
-    title: "Ładujesz do TL Meter",
-    desc: "Wrzucasz plik do naszej aplikacji w przeglądarce. Wybierasz profil swojego brzmienia (np. Metal), a TL Meter błyskawicznie dekoduje i analizuje sygnał."
-  },
-  {
-    step: "3",
-    title: "Weryfikujesz błędy",
-    desc: "Dostajesz pełne skanowanie: od głośności (LUFS), przez wykrywanie 'błota' w dolnej częstotliwości, po analizę męczących wysokich rejestrów (tzw. harshness). Wszystko z instrukcjami, co z tym faktem zrobić w miksie."
-  },
-  {
-    step: "4",
-    title: "Wyciągasz wnioski",
-    desc: "Wynik analizy, który otrzymasz, pokaże krok po kroku, co poprawić na ścieżkach i we wtyczkach DAW. Skopiuj plik JSON i wrzuć go do dowolnego asystenta AI, żeby jeszcze dokładniej analizować metryki Twojego miksu."
-  }
-];
+import { howItWorks, testimonials } from "@/lib/landing/content";
+import SiteFooter from "@/components/SiteFooter";
 
 export default function ActivatePage() {
     const [code, setCode] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [featuredTestimonial, setFeaturedTestimonial] = useState(testimonials[0]);
     const router = useRouter();
+
+    useEffect(() => {
+        const randomIndex = Math.floor(Math.random() * testimonials.length);
+        setFeaturedTestimonial(testimonials[randomIndex]);
+    }, []);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -50,32 +35,107 @@ export default function ActivatePage() {
             setTimeout(() => {
                 router.push("/analyze");
             }, 1500);
-        } catch (err: any) {
-            setError(err.message || "Błąd aktywacji. Sprawdź kod i spróbuj ponownie.");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Błąd aktywacji. Sprawdź kod i spróbuj ponownie.");
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <main className="min-h-screen bg-[var(--bg-surface)] flex flex-col">
+        <main className="min-h-screen grid-texture bg-[var(--bg-surface)] flex flex-col">
             {/* Header / Nav */}
-            <nav className="border-b border-[var(--border)] bg-[rgba(9,11,15,0.5)] backdrop-blur-md">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <nav className="sticky top-0 z-50 border-b border-[var(--border)] bg-[rgba(9,11,15,0.85)] backdrop-blur-md">
+                <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
                     <Link href="/">
                         <BrandLogo size="md" />
                     </Link>
-                    <Link href="/analyze" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-                        Powrót do analizy
-                    </Link>
+                    <div className="flex flex-col items-end">
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col items-end">
+                            <span className="text-[9px] font-bold uppercase text-[var(--text-muted)] tracking-tighter">Etap</span>
+                            <span className="text-xs font-black uppercase text-[var(--accent)] tracking-wider">Aktywacja</span>
+                        </div>
+                        </div>
+                    </div>
                 </div>
             </nav>
 
-            <div className="flex-1 flex items-center justify-center p-6">
-                <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div className="flex-1 flex items-center justify-center p-6 pt-6 md:p-6">
+                <div className="max-w-5xl w-full">
+                    <Link href="/analyze" className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors md:mb-6">
+                        <span aria-hidden="true">←</span>
+                        <span>Powrót do analizy</span>
+                    </Link>
 
-                    {/* Left: Activation Form */}
-                    <div className="order-2 md:order-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+
+                    {/* Left on desktop: Benefits */}
+                    <div className="order-1 md:order-1 space-y-8">
+                        <div>
+                            <span className="text-[var(--accent)] text-xs font-bold uppercase tracking-[0.2em] mb-3 block">Co zyskujesz odblokowując?</span>
+                            <h2 className="text-4xl font-bold leading-tight">Profesjonalna analiza <br /><span className="text-[var(--accent)] glow-text">bez żadnych kompromisów.</span></h2>
+                        </div>
+
+                        <div className="space-y-6">
+                            {[
+                                {
+                                    icon: "📊",
+                                    title: "Pełny raport DSP & RAW",
+                                    desc: "Dostęp do surowych danych widmowych, fali dźwiękowej oraz wszystkich 8 metryk analizy."
+                                },
+                                {
+                                    icon: "💡",
+                                    title: "Wsparcie techniczne w Twoim DAW",
+                                    desc: "Konkretne porady dotyczące EQ, kompresji i saturacji dopasowane do wykrytych problemów."
+                                },
+                                {
+                                    icon: "📁",
+                                    title: "Eksport JSON dla AI",
+                                    desc: "Pobieraj pełne dane, które możesz wkleić do zewnętrznych modeli AI w celu jeszcze głębszej analizy."
+                                },
+                                {
+                                    icon: "⚡",
+                                    title: "Brak dziennych limitów",
+                                    desc: "Analizuj tyle utworów, ile potrzebujesz. Brak kolejek i ograniczeń wydajnościowych."
+                                },
+                                {
+                                    icon: "💾",
+                                    title: "Historia i porównywanie",
+                                    desc: "Zapisuj wyniki swoich prac i porównuj jak zmieniał się Twój miks na przestrzeni czasu."
+                                }
+                            ].map((benefit, i) => (
+                                <div key={i} className="flex gap-5 group">
+                                    <div className="w-12 h-12 shrink-0 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] flex items-center justify-center text-2xl group-hover:border-[var(--accent)] group-hover:bg-[var(--accent)]/5 transition-all duration-300">
+                                        {benefit.icon}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-[var(--text-primary)] mb-1">{benefit.title}</h3>
+                                        <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{benefit.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="card border-[var(--border)] bg-[var(--bg-card)] p-5">
+                            <div className="mb-3 flex text-[var(--accent)] text-sm">★★★★★</div>
+                            <p className="text-sm text-[var(--text-secondary)] italic leading-relaxed">
+                                &ldquo;{featuredTestimonial.text}&rdquo;
+                            </p>
+                            <div className="mt-5 flex items-center gap-3 border-t border-[var(--border)] pt-4">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-surface)] text-xs font-bold text-[var(--accent)]">
+                                    {featuredTestimonial.name.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-[var(--text-primary)]">{featuredTestimonial.name}</div>
+                                    <div className="text-xs text-[var(--text-muted)]">{featuredTestimonial.role}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right on desktop: Activation Form */}
+                    <div className="order-2 md:order-2">
                         <div className="card p-8 md:p-10 border-[var(--border)] shadow-2xl relative overflow-hidden">
                             {/* Decorative background */}
                             <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)] opacity-[0.03] rounded-full -mr-16 -mt-16 blur-3xl"></div>
@@ -139,63 +199,7 @@ export default function ActivatePage() {
                             <span>Licencja wieczysta lub subskrypcyjna</span>
                         </div>
                     </div>
-
-                    {/* Right: Benefits List */}
-                    <div className="order-1 md:order-2 space-y-8">
-                        <div>
-                            <span className="text-[var(--accent)] text-xs font-bold uppercase tracking-[0.2em] mb-3 block">Co zyskujesz odblokowując?</span>
-                            <h2 className="text-4xl font-bold leading-tight">Profesjonalna analiza <br /><span className="text-gradient">bez żadnych kompromisów.</span></h2>
-                        </div>
-
-                        <div className="space-y-6">
-                            {[
-                                {
-                                    icon: "📊",
-                                    title: "Pełny raport DSP & RAW",
-                                    desc: "Dostęp do surowych danych widmowych, fali dźwiękowej oraz wszystkich 8 metryk analizy."
-                                },
-                                {
-                                    icon: "💡",
-                                    title: "Wsparcie techniczne w Twoim DAW",
-                                    desc: "Konkretne porady dotyczące EQ, kompresji i saturacji dopasowane do wykrytych problemów."
-                                },
-                                {
-                                    icon: "📁",
-                                    title: "Eksport JSON dla AI",
-                                    desc: "Pobieraj pełne dane, które możesz wkleić do zewnętrznych modeli AI w celu jeszcze głębszej analizy."
-                                },
-                                {
-                                    icon: "⚡",
-                                    title: "Brak dziennych limitów",
-                                    desc: "Analizuj tyle utworów, ile potrzebujesz. Brak kolejek i ograniczeń wydajnościowych."
-                                },
-                                {
-                                    icon: "💾",
-                                    title: "Historia i porównywanie",
-                                    desc: "Zapisuj wyniki swoich prac i porównuj jak zmieniał się Twój miks na przestrzeni czasu."
-                                }
-                            ].map((benefit, i) => (
-                                <div key={i} className="flex gap-5 group">
-                                    <div className="w-12 h-12 shrink-0 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] flex items-center justify-center text-2xl group-hover:border-[var(--accent)] group-hover:bg-[var(--accent)]/5 transition-all duration-300">
-                                        {benefit.icon}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-[var(--text-primary)] mb-1">{benefit.title}</h3>
-                                        <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{benefit.desc}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] border-dashed">
-                            <p className="text-xs text-[var(--text-muted)] italic">
-                                "TL Meter pomógł mi zidentyfikować błędy w dole pasma, których nie słyszałem w moich słuchawkach. Warto odblokować pełną wersję już dla samej precyzji RAW."
-                            </p>
-                            <div className="mt-2 text-right">
-                                <span className="text-[10px] font-bold text-[var(--accent)]">— Marek, producent EDM</span>
-                            </div>
-                        </div>
-                    </div>
+            </div>
 
                 </div>
             </div>
@@ -222,9 +226,7 @@ export default function ActivatePage() {
                 </div>
             </section>
 
-            <footer className="py-8 text-center text-[var(--text-muted)] text-xs border-t border-[var(--border)]">
-                TruLab | TL Meter © 2026. Od profesjonalnych realizatorów dla domowych producentów.
-            </footer>
+            <SiteFooter />
         </main>
     );
 }

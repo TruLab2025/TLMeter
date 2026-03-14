@@ -1,6 +1,7 @@
 import express from 'express';
 import { db } from '../db/index';
 import { analyses } from '../db/schema';
+import { ANALYSES_PUBLIC_OFFSET } from '../config/stats';
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     try {
         const allAnalyses = await db.select().from(analyses);
-        const totalAnalyses = allAnalyses?.length || 0;
+        const totalAnalyses = (allAnalyses?.length || 0) + ANALYSES_PUBLIC_OFFSET;
         
         const today = new Date();
         today.setHours(0, 0, 0, 0);

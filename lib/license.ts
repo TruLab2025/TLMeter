@@ -1,5 +1,3 @@
-import type { StyleProfile } from "@/lib/profiles";
-
 export type Plan = "free" | "lite" | "pro" | "premium";
 
 export interface SessionData {
@@ -41,7 +39,7 @@ export function clearSession(): void {
 
 /** Sends activation code to backend and saves session. */
 export async function activateCode(code: string): Promise<SessionData> {
-    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const API = process.env.NEXT_PUBLIC_API_URL || "";
     const fp = await getFingerprint();
     const res = await fetch(`${API}/api/license/activate`, {
         method: "POST",
@@ -52,7 +50,7 @@ export async function activateCode(code: string): Promise<SessionData> {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error || "Błąd aktywacji");
     }
-    const backendData = await res.json() as any;
+    const backendData = await res.json() as { plan?: Plan };
     
     // Transform backend response to SessionData
     const sessionData: SessionData = {

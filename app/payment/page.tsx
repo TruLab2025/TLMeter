@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Check, CreditCard, Mail, Sparkles, Shield, Zap, ArrowRight, Loader2, Info, X, Copy, CheckCheck } from 'lucide-react';
+import { Mail, Sparkles, Shield, Zap, ArrowRight, Loader2, Info, X, Copy, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
 import { activateCode, saveSession, type Plan } from '@/lib/license';
 import BrandLogo from '@/components/BrandLogo';
+import SiteFooter from '@/components/SiteFooter';
 
 const PLANS_CONFIG = {
     lite: {
@@ -132,7 +133,7 @@ function PaymentContent() {
 
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:3000/api/payment/checkout', {
+            const response = await fetch('/api/payment/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, plan: planId }),
@@ -166,7 +167,7 @@ function PaymentContent() {
             setLoading(true);
             setWebhookPending(true);
             try {
-                const response = await fetch(`http://localhost:3000/api/payment/status/${encodeURIComponent(callbackTx)}`);
+                const response = await fetch(`/api/payment/status/${encodeURIComponent(callbackTx)}`);
                 const data = await response.json();
 
                 if (response.ok && data?.status === 'active' && data?.code) {
@@ -203,8 +204,8 @@ function PaymentContent() {
             setTimeout(() => {
                 router.push('/analyze');
             }, 1000);
-        } catch (err: any) {
-            alert(err.message || 'Błąd aktywacji');
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : 'Błąd aktywacji');
             setActivating(false);
         }
     };
@@ -267,7 +268,7 @@ function PaymentContent() {
                             )}
                         </button>
                         <Link href="/" className="text-[var(--text-secondary)] hover:text-white transition-colors text-sm">
-                            Wróć do strony głównej
+                            Powrót do strony głównej
                         </Link>
                     </div>
                 </div>
@@ -276,13 +277,13 @@ function PaymentContent() {
     }
 
     return (
-        <div className="flex-1 p-6 pt-12 pb-24">
+        <div className="flex-1 p-6 pt-4 pb-24 md:pt-12">
             <div className="max-w-6xl mx-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
                     {/* Left Side: Plan Info & Comparison */}
                     <div className="space-y-8 animate-fade-in">
                         <div>
-                            <Link href="/#pricing" className="text-[var(--text-muted)] hover:text-[var(--accent)] flex items-center gap-2 mb-6 transition-colors text-sm font-semibold">
+                            <Link href={`/#plan-${plan.id}`} className="text-[var(--text-muted)] hover:text-[var(--accent)] flex items-center gap-2 mb-5 transition-colors text-sm font-semibold md:mb-6">
                                 <ArrowRight className="w-4 h-4 rotate-180" />
                                 Wróć do cennika
                             </Link>
@@ -458,14 +459,14 @@ export default function PaymentPage() {
 function Nav() {
     return (
         <nav className="sticky top-0 z-50 border-b border-[var(--border)] backdrop-blur-md bg-[rgba(9,11,15,0.85)]">
-            <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
                 <Link href="/">
                     <BrandLogo size="md" />
                 </Link>
                 <div className="flex items-center gap-3">
                     <div className="flex flex-col items-end">
-                        <span className="text-[9px] font-bold uppercase text-[var(--text-muted)] tracking-tighter">Plan</span>
-                        <span className="text-xs font-black uppercase text-[var(--accent)] tracking-wider">Demo / Free</span>
+                        <span className="text-[9px] font-bold uppercase text-[var(--text-muted)] tracking-tighter">Checkout</span>
+                        <span className="text-xs font-black uppercase text-[var(--accent)] tracking-wider">TL Meter</span>
                     </div>
                     <div className="w-px h-6 bg-[var(--border)] mx-1"></div>
                     <div className="hidden md:flex items-center gap-6">
@@ -481,20 +482,5 @@ function Nav() {
 }
 
 function Footer() {
-    return (
-        <footer className="border-t border-[var(--border)] py-8 mt-12 bg-[var(--bg-surface)]">
-            <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-sm text-[var(--text-muted)] gap-8">
-                <div className="flex flex-col md:flex-row items-center gap-4">
-                    <span className="font-bold text-[var(--text-secondary)]">© 2026 TruLab</span>
-                    <span className="hidden md:inline">|</span>
-                    <span>TL Meter. Profesjonalne narzędzie DSP dla domowych producentów muzyki.</span>
-                </div>
-                <div className="flex gap-8">
-                    <Link href="/" className="hover:text-[var(--text-secondary)] transition-colors">Kontakt</Link>
-                    <Link href="/activate" className="hover:text-[var(--text-secondary)] transition-colors">Aktywuj kod</Link>
-                    <Link href="/terms" className="hover:text-[var(--text-secondary)] transition-colors">Regulamin</Link>
-                </div>
-            </div>
-        </footer>
-    );
+    return <SiteFooter className="mt-12 py-8" />;
 }

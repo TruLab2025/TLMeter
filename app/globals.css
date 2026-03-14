@@ -154,12 +154,14 @@ body {
   font-size: 14px;
   transition: all 0.2s;
   cursor: pointer;
-  border: none;
+  border: 1px solid transparent;
+  box-sizing: border-box;
 }
 
 .btn-primary {
   background: var(--accent);
   color: #000;
+  border-color: transparent;
 }
 
 .btn-primary:hover {

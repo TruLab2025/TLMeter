@@ -1,8 +1,10 @@
 import express from 'express';
 import { db } from '../db/index';
-import { analyses } from '../db/schema';
+import { analyses, licenses } from '../db/schema';
 import { randomUUID } from 'crypto';
 import { requireAdminApiKey } from '../middleware/security';
+import { eq, or } from 'drizzle-orm';
+import { ANALYSES_PUBLIC_OFFSET } from '../config/stats';
 
 const router = express.Router();
 
@@ -23,9 +25,22 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Invalid filename value' });
         }
 
+        let resolvedLicenseId: string | null = null;
+
+        if (typeof license_id === 'string' && license_id.trim().length > 0) {
+            const licenseValue = license_id.trim();
+            const matchedLicense = await db
+                .select({ id: licenses.id })
+                .from(licenses)
+                .where(or(eq(licenses.id, licenseValue), eq(licenses.code, licenseValue)))
+                .get();
+
+            resolvedLicenseId = matchedLicense?.id ?? null;
+        }
+
         const analysis = {
             id: randomUUID(),
-            license_id: license_id || null, // null = free user
+            license_id: resolvedLicenseId, // null = free user or unmatched code
             style,
             filename: filename || 'Unknown',
             summary: {},
@@ -59,7 +74,7 @@ router.get('/', requireAdminApiKey, async (req, res) => {
 router.get('/count', async (req, res) => {
     try {
         // Poprawne zliczanie analiz przez drizzle-orm
-        const count = await db.select().from(analyses).execute().then(rows => rows.length);
+        const count = await db.select().from(analyses).execute().then(rows => rows.length + ANALYSES_PUBLIC_OFFSET);
         res.json({ count });
     } catch (error) {
         console.error('Error counting analyses:', error);

@@ -9,9 +9,9 @@ function ABComparisonSection() {
   const [bypass, setBypass] = useState(false);
   const [audioError, setAudioError] = useState("");
   const [loading, setLoading] = useState(false);
-  const audioRef = useRef(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [pendingBypass, setPendingBypass] = useState(null);
+  const [pendingBypass, setPendingBypass] = useState<boolean | null>(null);
   const originalUrl = "/demo/original.mp3";
   const processedUrl = "/demo/processed.mp3";
 
