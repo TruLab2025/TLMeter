@@ -1,7 +1,22 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+
 # dependencies
-/node_modules
+node_modules
+
+# next.js build output
+.next
+
+# temp files
+tmp
+
+# environment files
+.env
+
+# system files
+.DS_Store
+
+# yarn/other package managers
 /.pnp
 .pnp.*
 .yarn/*
@@ -38,6 +53,10 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# eksporty snapshotów (nie śledzić w repo)
+snapshots-export.json
+snapshots-export.zip
 next-env.d.ts
 
 # subproject artifacts
