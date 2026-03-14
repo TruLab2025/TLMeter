@@ -4,7 +4,6 @@
 
 # Production/server ignores
 node_modules
-.next
 tmp
 .continue
 .vscode
@@ -26,7 +25,6 @@ stderr.log
 /coverage
 
 # next.js
-/.next/
 /out/
 
 # production
@@ -58,7 +56,6 @@ next-env.d.ts
 
 # subproject artifacts
 /api/node_modules
-/api/.next
 
 # workspace & exports
 .tmp/
