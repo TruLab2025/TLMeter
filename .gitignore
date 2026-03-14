@@ -1,19 +1,16 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 
-# dependencies
+
+# Production/server ignores
 node_modules
-
-# next.js build output
 .next
-
-# temp files
 tmp
-
-# environment files
+.continue
+.vscode
+stderr.log
 .env
-
-# system files
+.env.local
 .DS_Store
 
 # yarn/other package managers
