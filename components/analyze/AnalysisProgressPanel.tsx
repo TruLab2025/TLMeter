@@ -26,8 +26,16 @@ export default function AnalysisProgressPanel({
             {Math.round(Math.min(100, progressPct))}%
           </div>
         </div>
-        <div className="meter-track h-2 bg-[var(--bg-card2)] overflow-hidden rounded-full">
-          <div className="meter-fill bg-[var(--accent)] h-full transition-all duration-300" style={{ width: `${Math.min(100, progressPct)}%` }}></div>
+        <div className="meter-track h-2 overflow-hidden rounded-full relative" style={{ background: 'linear-gradient(90deg, #00d4ff 0%, #818cf8 60%, #ff3cac 100%)' }}>
+          {/* Overlay maskuje niewypełnioną część */}
+          <div
+            className="absolute right-0 top-0 h-full transition-all duration-300"
+            style={{
+              width: `${100 - Math.min(100, progressPct)}%`,
+              background: 'var(--bg-card2)',
+              pointerEvents: 'none',
+            }}
+          />
         </div>
 
         <div className="mt-4 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
