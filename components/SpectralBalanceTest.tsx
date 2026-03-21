@@ -113,6 +113,12 @@ export default function SpectralBalanceTest() {
           TL Meter Optimized
         </button>
       </div>
+      {/* Link do Spotify */}
+      <div style={{textAlign:'center',marginTop:12}}>
+        <a href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer" style={{color:'#1DB954',fontWeight:600,fontSize:18,textDecoration:'none'}}>
+          Posłuchaj cały utwór w Spotify
+        </a>
+      </div>
     </div>
   );
 }

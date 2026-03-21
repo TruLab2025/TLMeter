@@ -1,17 +1,17 @@
 import express from 'express';
-import { db } from '../db/index';
-import { licenses } from '../db/schema';
-import { eq } from 'drizzle-orm';
-import { createLicense } from '../services/license';
-import { sendLicenseEmail } from '../services/email';
+import { sendAccessTokenEmail } from '../services/email';
 import {
     createTpayTransaction,
     extractTpayTransactionId,
+    getTpayTransaction,
     getPlanPrice,
     isSuccessfulTpayStatus,
 } from '../services/tpay';
 import { createIfirmaInvoice } from '../services/ifirma';
 import { requireDevelopmentOnly } from '../middleware/security';
+import { createAccessToken, getAccessTokenSecret, type AccessPlan } from '../lib/token';
+import { createPaymentContext, verifyPaymentContext } from '../lib/paymentContext';
+import { deriveSubIdFromEmail, upsertEntitlement } from '../services/entitlements';
 
 const router = express.Router();
 
@@ -33,7 +33,7 @@ function getApiPublicUrl() {
 // Create real payment in Tpay and return redirect URL
 router.post('/checkout', express.json(), async (req, res) => {
     try {
-        const { plan, email } = req.body as { plan?: string; email?: string };
+        const { plan, email, device_id, device_pub } = req.body as { plan?: string; email?: string; device_id?: string; device_pub?: string };
 
         if (!plan || !email) {
             return res.status(400).json({ error: 'Plan and email are required' });
@@ -43,23 +43,29 @@ router.post('/checkout', express.json(), async (req, res) => {
             return res.status(400).json({ error: 'Invalid plan' });
         }
 
-        const license = await createLicense(plan, email);
+        const deviceId = typeof device_id === 'string' ? device_id.trim() : '';
+        if (!deviceId || deviceId.length > 128) {
+            return res.status(400).json({ error: 'device_id is required' });
+        }
+
+        const devicePub = typeof device_pub === 'string' ? device_pub.trim() : '';
+        if (!devicePub || devicePub.length > 2048) {
+            return res.status(400).json({ error: 'device_pub is required' });
+        }
+
+        const iat = Math.floor(Date.now() / 1000);
+        const ctx = createPaymentContext({ device_id: deviceId, device_pub: devicePub, plan, email, iat });
 
         const transaction = await createTpayTransaction({
             plan,
             email,
             amount: getPlanPrice(plan),
             description: `TruLab Meter ${plan.toUpperCase()} plan`,
-            hiddenDescription: license.id,
+            hiddenDescription: ctx,
             successUrl: `${getPublicAppUrl()}/payment?status=success&tx={transactionId}`,
             errorUrl: `${getPublicAppUrl()}/payment?status=error`,
             notificationUrl: `${getApiPublicUrl()}/api/payment/tpay/webhook`,
         });
-
-        await db
-            .update(licenses)
-            .set({ stripe_session_id: transaction.transactionId })
-            .where(eq(licenses.id, license.id));
 
         res.json({
             success: true,
@@ -78,46 +84,52 @@ router.post('/tpay/webhook', express.json(), async (req, res) => {
         const payload = req.body || {};
         const transactionId = extractTpayTransactionId(payload);
         const status = String(payload?.status || payload?.tr_status || '').toLowerCase();
+        const hidden = String(payload?.hiddenDescription || payload?.hidden_description || payload?.hidden_desc || '');
 
         if (!transactionId) {
             return res.status(400).json({ error: 'Missing transaction id in webhook payload' });
-        }
-
-        const licenseRows = await db
-            .select()
-            .from(licenses)
-            .where(eq(licenses.stripe_session_id, transactionId));
-        const license = licenseRows[0];
-
-        if (!license) {
-            return res.status(200).json({ ok: true, ignored: true, reason: 'license-not-found' });
         }
 
         if (!isSuccessfulTpayStatus(status)) {
             return res.status(200).json({ ok: true, ignored: true, reason: `status-${status || 'unknown'}` });
         }
 
-        if (license.status !== 'active') {
-            await db
-                .update(licenses)
-                .set({
-                    status: 'active',
-                    activated_at: new Date(),
-                })
-                .where(eq(licenses.id, license.id));
-
-            if (license.email) {
-                await sendLicenseEmail(license.email, license.code, license.plan);
+        let ctxRaw = hidden;
+        if (!ctxRaw) {
+            try {
+                const details = await getTpayTransaction(transactionId);
+                ctxRaw = String(details?.hiddenDescription || details?.hidden_description || details?.hidden_desc || details?.data?.hiddenDescription || '');
+            } catch (error) {
+                console.warn('[tpay] could not fetch transaction details for context', error);
             }
-
-            await createIfirmaInvoice({
-                email: license.email || 'unknown@example.com',
-                plan: license.plan,
-                amount: getPlanPrice(license.plan as PaidPlan),
-                paymentTransactionId: transactionId,
-                licenseCode: license.code,
-            });
         }
+
+        const verified = verifyPaymentContext(ctxRaw);
+        if (!verified.ok) {
+            return res.status(200).json({ ok: true, ignored: true, reason: verified.error });
+        }
+
+        const ctx = verified.ctx;
+        const exp = ctx.iat + 30 * 24 * 60 * 60;
+        const sub = deriveSubIdFromEmail(ctx.email);
+        try {
+            await upsertEntitlement({ sub, plan: ctx.plan, expiresAt: exp, devicePub: ctx.device_pub });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            return res.status(200).json({ ok: true, ignored: true, reason: msg });
+        }
+        const token = createAccessToken({ sub, device_id: ctx.device_id, device_pub: ctx.device_pub, plan: ctx.plan, exp }, getAccessTokenSecret());
+
+        await sendAccessTokenEmail(ctx.email, token, ctx.plan);
+
+        const ref = `${token.slice(0, 12)}…${token.slice(-8)}`;
+        await createIfirmaInvoice({
+            email: ctx.email,
+            plan: ctx.plan,
+            amount: getPlanPrice(ctx.plan as PaidPlan),
+            paymentTransactionId: transactionId,
+            licenseCode: ref,
+        });
 
         return res.json({ ok: true });
     } catch (error) {
@@ -133,18 +145,45 @@ router.get('/status/:transactionId', async (req, res) => {
         if (!transactionId) {
             return res.status(400).json({ error: 'transactionId is required' });
         }
-
-        const rows = await db.select().from(licenses).where(eq(licenses.stripe_session_id, transactionId));
-        const license = rows[0];
-
-        if (!license) {
-            return res.status(404).json({ found: false });
+        const deviceIdHeader = String(req.header('x-device-id') || '').trim();
+        if (!deviceIdHeader) {
+            return res.status(400).json({ error: 'missing-device-id' });
         }
+
+        const details = await getTpayTransaction(transactionId);
+        const status = String(details?.status || details?.tr_status || details?.transactionStatus || '').toLowerCase();
+        const hidden = String(details?.hiddenDescription || details?.hidden_description || details?.hidden_desc || details?.data?.hiddenDescription || '');
+        const verified = verifyPaymentContext(hidden);
+
+        if (!verified.ok) {
+            return res.status(200).json({ found: true, status: 'unknown', error: verified.error });
+        }
+
+        const ctx = verified.ctx;
+        if (ctx.device_id !== deviceIdHeader) {
+            return res.status(200).json({ found: true, status: 'device-mismatch' });
+        }
+
+        if (!isSuccessfulTpayStatus(status)) {
+            return res.json({ found: true, status: status || 'pending', plan: ctx.plan });
+        }
+
+        const exp = ctx.iat + 30 * 24 * 60 * 60;
+        const sub = deriveSubIdFromEmail(ctx.email);
+        try {
+            await upsertEntitlement({ sub, plan: ctx.plan, expiresAt: exp, devicePub: ctx.device_pub });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            return res.status(200).json({ found: true, status: 'active', plan: ctx.plan, error: msg });
+        }
+        const token = createAccessToken({ sub, device_id: ctx.device_id, device_pub: ctx.device_pub, plan: ctx.plan, exp }, getAccessTokenSecret());
 
         return res.json({
             found: true,
-            status: license.status,
-            plan: license.plan,
+            status: 'active',
+            plan: ctx.plan,
+            email: ctx.email,
+            token,
         });
     } catch (error) {
         console.error('Payment status error:', error);
@@ -155,7 +194,7 @@ router.get('/status/:transactionId', async (req, res) => {
 // Simulated payment endpoint
 router.post('/simulate', requireDevelopmentOnly, express.json(), async (req, res) => {
     try {
-        const { plan, email } = req.body;
+        const { plan, email, device_id, device_pub } = req.body as { plan?: string; email?: string; device_id?: string; device_pub?: string };
 
         if (!plan || !email) {
             return res.status(400).json({ error: 'Plan and email are required' });
@@ -169,17 +208,28 @@ router.post('/simulate', requireDevelopmentOnly, express.json(), async (req, res
         console.log(`💰 Simulating payment for ${plan} plan by ${email}...`);
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // 2. Create license
-        const license = await createLicense(plan, email);
-        console.log(`🔑 License created: ${license.code}`);
+        const deviceId = typeof device_id === 'string' ? device_id.trim() : '';
+        if (!deviceId) {
+            return res.status(400).json({ error: 'device_id is required' });
+        }
+        const devicePub = typeof device_pub === 'string' ? device_pub.trim() : '';
+        if (!devicePub) {
+            return res.status(400).json({ error: 'device_pub is required' });
+        }
 
-        // 3. Send email
-        await sendLicenseEmail(email, license.code, plan);
+        // 2. Issue stateless token
+        const iat = Math.floor(Date.now() / 1000);
+        const exp = iat + 30 * 24 * 60 * 60;
+        let token: string | null = null;
+        const sub = deriveSubIdFromEmail(email);
+        await upsertEntitlement({ sub, plan: plan as AccessPlan, expiresAt: exp, devicePub });
+        token = createAccessToken({ sub, device_id: deviceId, device_pub: devicePub, plan: plan as AccessPlan, exp }, getAccessTokenSecret());
+        await sendAccessTokenEmail(email, token, plan);
 
         res.json({
             success: true,
-            message: 'Payment simulated successfully. License code sent to email.',
-            code: license.code, // Returning code directly for UX convenience in dev
+            message: 'Payment simulated successfully. Access key sent to email.',
+            token,
         });
 
     } catch (error) {

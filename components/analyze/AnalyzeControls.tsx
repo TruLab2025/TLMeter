@@ -4,12 +4,6 @@ import type { Plan } from "@/lib/license";
 import type { PlatformKey } from "@/lib/platform-readiness";
 import { PlatformPanel } from "@/components/PlatformPanel";
 
-interface ReferenceDetectionState {
-  isReference: boolean;
-  confidence: number;
-  reason: string;
-}
-
 interface AnalyzeControlsProps {
   style: StyleSlug | "suggest";
   canUseAutoStyle: boolean;
@@ -30,11 +24,13 @@ interface AnalyzeControlsProps {
   fileRef: React.RefObject<HTMLInputElement | null>;
   onFileSelected: (file: File) => void;
   file: File | null;
+  referenceFileRef: React.RefObject<HTMLInputElement | null>;
+  onReferenceFileSelected: (file: File) => void;
+  referenceFile: File | null;
+  compareWithReference: boolean;
+  onCompareWithReferenceChange: (enabled: boolean) => void;
   uploadInfo: string;
   onRunAnalysis: () => void;
-  referenceDetected: ReferenceDetectionState | null;
-  contributeToProfile: boolean;
-  onContributeToProfileChange: (checked: boolean) => void;
 }
 
 export default function AnalyzeControls({
@@ -57,13 +53,16 @@ export default function AnalyzeControls({
   fileRef,
   onFileSelected,
   file,
+  referenceFileRef,
+  onReferenceFileSelected,
+  referenceFile,
+  compareWithReference,
+  onCompareWithReferenceChange,
   uploadInfo,
   onRunAnalysis,
-  referenceDetected,
-  contributeToProfile,
-  onContributeToProfileChange,
 }: AnalyzeControlsProps) {
   const isPlatformMode = platform !== null;
+  const canCompare = sessionPlan === "premium" && !isPlatformMode;
 
   return (
     <>
@@ -72,16 +71,17 @@ export default function AnalyzeControls({
           Styl muzyczny
         </div>
         <div className="flex gap-3 flex-wrap">
-          <button
-            onClick={() => {
-              if (!canUseAutoStyle) {
-                routerPush("/payment?plan=lite#compare-plans");
-                return;
-              }
-              onPlatformChange(null);
-              setStyle("suggest");
-              setAnalysisMode("suggest");
-            }}
+	          <button
+	            onClick={() => {
+	              if (!canUseAutoStyle) {
+	                routerPush("/payment?plan=lite#compare-plans");
+	                return;
+	              }
+	              onPlatformChange(null);
+	              onCompareWithReferenceChange(false);
+	              setStyle("suggest");
+	              setAnalysisMode("suggest");
+	            }}
             className={`btn ${!isPlatformMode && style === "suggest" ? "btn-primary" : "btn-outline"} py-2 px-4 flex items-center gap-2 transition-all ${!canUseAutoStyle ? "opacity-45 border-dashed border-[var(--border)] bg-[var(--bg-card2)]/60 text-[var(--text-muted)]" : ""}`}
             title={!canUseAutoStyle ? "Kliknij, aby odblokować w planie Lite" : undefined}
           >
@@ -120,6 +120,32 @@ export default function AnalyzeControls({
             );
           })}
         </div>
+
+	        {canCompare && (
+		          <div className="mt-4 pt-4 border-t border-[var(--border)]">
+	            <label className="flex items-center gap-2 cursor-pointer">
+	              <input
+	                type="checkbox"
+	                checked={compareWithReference}
+	                onChange={(event) => onCompareWithReferenceChange(event.target.checked)}
+	                className="w-4 h-4 rounded accent-[var(--accent)]"
+	              />
+		              <span className="text-sm text-[var(--text-primary)]">
+		                Porównaj z referencją
+		              </span>
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest"
+                    style={{ background: "var(--accent)", color: "#000" }}
+                  >
+                    Premium
+                  </span>
+		            </label>
+	            <div className="text-xs text-[var(--text-muted)] mt-1">
+	              Dodaj drugi plik (referencję) — analiza DSP wykona się dla obu i pokaże różnice.
+	              {style === "suggest" ? " (Po włączeniu przełączę na styl manualny)" : ""}
+	            </div>
+		          </div>
+		        )}
       </div>
 
       <PlatformPanel
@@ -174,6 +200,41 @@ export default function AnalyzeControls({
         </div>
       )}
 
+	      {compareWithReference && canCompare && !analyzing && (
+	        <div
+	          className={`dropzone p-12 text-center mb-5 cursor-pointer ${dragging ? "active" : ""}`}
+	          onClick={() => referenceFileRef.current?.click()}
+	        >
+	          <input
+	            ref={referenceFileRef}
+	            type="file"
+	            accept=".wav,.aiff,.aif,.mp3,.flac,.ogg,.m4a"
+	            className="hidden"
+	            onClick={(event) => {
+	              event.currentTarget.value = "";
+	            }}
+	            onChange={(event) => event.target.files?.[0] && onReferenceFileSelected(event.target.files[0])}
+	          />
+	          {referenceFile ? (
+	            <div>
+	              <div className="text-2xl mb-2">🎛️</div>
+	              <div className="font-semibold text-[var(--text-primary)]">{referenceFile.name}</div>
+	              <div className="text-sm text-[var(--text-muted)] mt-1">
+	                Referencja · {(referenceFile.size / 1024 / 1024).toFixed(1)} MB
+	              </div>
+	            </div>
+	          ) : (
+	            <div>
+	              <div className="text-4xl mb-3 opacity-50">📎</div>
+	              <div className="font-semibold text-[var(--text-secondary)]">
+	                Dodaj plik referencyjny
+	              </div>
+	              <div className="text-sm text-[var(--text-muted)] mt-1">{uploadInfo}</div>
+	            </div>
+	          )}
+	        </div>
+	      )}
+
       {file && !analyzing && (
         <div className="flex justify-center mb-6">
           <button onClick={onRunAnalysis} className="btn btn-primary w-[216px] justify-start pl-4 pr-5 py-3 text-base">
@@ -185,47 +246,6 @@ export default function AnalyzeControls({
         </div>
       )}
 
-      {file && !analyzing && referenceDetected && referenceDetected.confidence > 0 && (
-        <div className="card p-4 mb-5 bg-[var(--bg-card)] border border-[var(--accent)] border-opacity-40">
-          <div className="flex items-start gap-3 mb-3">
-            <span className="text-xl flex-shrink-0">📚</span>
-            <div className="flex-1">
-              <div className="font-semibold text-[var(--text-primary)]">
-                {referenceDetected.isReference ? "✨ Referencja do profilu!" : "🔍 Możliwa referencja"}
-              </div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1">
-                {referenceDetected.reason}
-                {referenceDetected.confidence !== undefined && (
-                  <span className="text-[var(--text-muted)] ml-2">({Math.round(referenceDetected.confidence * 100)}% pewności)</span>
-                )}
-              </div>
-              {referenceDetected.confidence < 0.9 && (
-                <div className="text-xs text-[var(--text-muted)] mt-2">
-                  Czy chcesz dodać te metryki do profilu {style}?
-                </div>
-              )}
-            </div>
-          </div>
-          {referenceDetected.confidence < 0.9 && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={contributeToProfile}
-                onChange={(event) => onContributeToProfileChange(event.target.checked)}
-                className="w-4 h-4 rounded accent-[var(--accent)]"
-              />
-              <span className="text-sm text-[var(--text-primary)]">
-                Tak, to jest referencja dla {style} — dodaj do profilu
-              </span>
-            </label>
-          )}
-          {referenceDetected.confidence >= 0.9 && (
-            <div className="text-xs text-[var(--accent)] font-semibold">
-              ✓ Metryki automatycznie zostaną dodane do profilu
-            </div>
-          )}
-        </div>
-      )}
     </>
   );
 }

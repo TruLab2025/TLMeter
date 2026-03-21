@@ -169,6 +169,7 @@ export function computeDeltas(
  */
 export async function migrateHistoryToServer(): Promise<number> {
     if (typeof window === "undefined") return 0;
+    const { getAuthHeaders } = await import("@/lib/license");
     
     // Check if already migrated
     const migrated = localStorage.getItem("tlmeter_migrated");
@@ -190,7 +191,7 @@ export async function migrateHistoryToServer(): Promise<number> {
         try {
             await fetch('/api/analyses', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     license_id: null, // Historic analyses don't have license
                     style: entry.style,

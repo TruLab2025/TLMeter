@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { AnalysisResult, analyzeAudioBuffer } from "@/lib/dsp/analyze";
+import type { AnalysisResult } from "@/lib/analyze/types";
+import { analyzeAudioBuffer } from "@/lib/dsp/analyze.js";
 
 export function useAnalysisEngine() {
   const [analyzing, setAnalyzing] = useState(false);

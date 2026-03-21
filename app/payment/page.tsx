@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { activateCode, saveSession, type Plan } from '@/lib/license';
 import BrandLogo from '@/components/BrandLogo';
 import SiteFooter from '@/components/SiteFooter';
+import { getOrCreateDeviceId } from '@/lib/device';
+import { getOrCreateDeviceKeyRecord } from '@/lib/deviceKeys';
 
 const PLANS_CONFIG = {
     lite: {
@@ -131,13 +133,19 @@ function PaymentContent() {
             return;
         }
 
-        setLoading(true);
-        try {
-            const response = await fetch('/api/payment/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, plan: planId }),
-            });
+	        setLoading(true);
+	        try {
+	            const { publicSpkiB64u } = await getOrCreateDeviceKeyRecord();
+	            const response = await fetch('/api/payment/checkout', {
+	                method: 'POST',
+	                headers: { 'Content-Type': 'application/json' },
+	                body: JSON.stringify({
+	                    email,
+	                    plan: planId,
+	                    device_id: getOrCreateDeviceId(),
+	                    device_pub: publicSpkiB64u,
+	                }),
+	            });
 
             const data = await response.json();
 
@@ -167,12 +175,15 @@ function PaymentContent() {
             setLoading(true);
             setWebhookPending(true);
             try {
-                const response = await fetch(`/api/payment/status/${encodeURIComponent(callbackTx)}`);
+                const response = await fetch(`/api/payment/status/${encodeURIComponent(callbackTx)}`, {
+                    headers: { 'x-device-id': getOrCreateDeviceId() },
+                });
                 const data = await response.json();
 
-                if (response.ok && data?.status === 'active' && data?.code) {
+                const issuedKey = data?.token || data?.code;
+                if (response.ok && data?.status === 'active' && issuedKey) {
                     setSuccess(true);
-                    setLicenseCode(data.code);
+                    setLicenseCode(issuedKey);
                     if (data.email) setEmail(data.email);
                     setWebhookPending(false);
                     return;
@@ -228,11 +239,11 @@ function PaymentContent() {
                     </div>
                     <h1 className="text-3xl font-bold mb-2">Sukces! Twój plan jest gotowy.</h1>
                     <p className="text-[var(--text-secondary)] mb-8">
-                        Kod licencyjny wysłaliśmy na e-mail <strong>{email}</strong>. Faktura iFirma jest generowana automatycznie po potwierdzeniu płatności.
+                        Klucz dostępu wysłaliśmy na e-mail <strong>{email}</strong>. Faktura iFirma jest generowana automatycznie po potwierdzeniu płatności.
                     </p>
 
                     <div className="bg-[var(--bg-surface)] border border-dashed border-[var(--accent)] p-6 rounded-xl mb-8">
-                        <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-2 font-bold font-mono">Twój Kod Licencyjny</p>
+                        <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-2 font-bold font-mono">Twój Klucz Dostępu</p>
                         <div className="flex items-center justify-between gap-4">
                             <code className="text-2xl font-mono text-[var(--accent)] font-bold tracking-tighter block">{licenseCode}</code>
                             <button

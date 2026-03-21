@@ -26,6 +26,8 @@ stderr.log
 
 # next.js
 /out/
+.next/
+.turbo/
 
 # production
 /build

@@ -296,6 +296,46 @@ export interface PremiumJsonReport extends Omit<ProJsonReport, "schema_version" 
 
 export type PublicJsonReport = FreeJsonReport | LiteJsonReport | ProJsonReport | PremiumJsonReport;
 
+// ============================================================================
+// PUBLIC: Premium Compare JSON Export (mix vs reference)
+// ============================================================================
+
+export interface PremiumCompareMetric {
+  mix: number | null;
+  reference: number | null;
+  delta: number | null; // mix - reference
+}
+
+export interface PremiumCompareJsonReport {
+  schema_version: "premium-compare-json-v1";
+  app: "TL Meter";
+  plan: "premium";
+  generated_at: string;
+  privacy: {
+    audio_uploaded: false;
+    filename_included: false;
+    pii_included: false;
+  };
+  files?: {
+    mix?: { size_bytes: number | null; mime: string | null; ext: string | null };
+    reference?: { size_bytes: number | null; mime: string | null; ext: string | null };
+  };
+  mix: PremiumJsonReport;
+  reference: PremiumJsonReport;
+  comparison: {
+    lufs_integrated: PremiumCompareMetric;
+    true_peak_dbtp: PremiumCompareMetric;
+    lra: PremiumCompareMetric;
+    clipping_events: PremiumCompareMetric;
+    energy_low_pct: PremiumCompareMetric;
+    energy_mid_pct: PremiumCompareMetric;
+    energy_high_pct: PremiumCompareMetric;
+    stereo_correlation: PremiumCompareMetric;
+  };
+}
+
+export type DownloadJsonReport = PublicJsonReport | PremiumCompareJsonReport;
+
 // Legacy alias for backwards compatibility
 export type CoreJsonReport = ProJsonReport;
 

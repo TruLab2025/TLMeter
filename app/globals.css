@@ -185,6 +185,17 @@ body {
   border-color: var(--accent);
 }
 
+.btn-danger-outline {
+  background: transparent;
+  color: var(--bad);
+  border: 1px solid rgba(239, 68, 68, 0.55);
+}
+
+.btn-danger-outline:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: var(--bad);
+}
+
 /* Drop zone */
 .dropzone {
   border: 2px dashed var(--border-glow);

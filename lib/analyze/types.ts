@@ -17,6 +17,11 @@ export interface AnalysisResult {
     integratedLufs: number | null;
     truePeakDbtp: number | null;
     lra: number | null;
+    clipping?: {
+      clippedSamples?: number;
+      clipEvents?: number;
+      clipThresholdAbs?: number;
+    };
     energyDistribution: { low: number; mid: number; high: number };
     stereo?: { correlation?: number; width?: number };
     spectral?: {
@@ -25,10 +30,10 @@ export interface AnalysisResult {
       spectralHistogram?: number[];
       centroidHzMean?: number;
     };
-    crestFactorDbMean?: number | null;
-    transients?: { onsetStrengthMean?: number };
-    rhythm?: { tempoBpm?: number };
-  };
+	    crestFactorDbMean?: number | null;
+	    transients?: { onsetStrengthMean?: number };
+	    rhythm?: { tempoBpm?: number; tempoStd?: number | null; tempoConfidence?: number };
+	  };
   timeSeries?: {
     onsetTimesSec?: number[];
   };

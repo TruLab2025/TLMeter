@@ -29,6 +29,16 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## TL Meter docs
+
+- Licensing manual: `docs/LICENSING.md`
+- Plans enforcement audit: `docs/PLAN_ENFORCEMENT.md`
+- Payments integration note: checkout sends `device_id` and webhook issues an access key (see `docs/LICENSING.md`)
+
+## Env (licensing)
+
+- Backend (API): `LICENSE_TOKEN_SECRET` (required in production), `PAYMENT_CONTEXT_SECRET` (optional; defaults to `LICENSE_TOKEN_SECRET`), `LICENSE_STORE_DIR` (where entitlements/devices are stored), `LICENSE_MODE` (`stateless` default, set `db` to use legacy), `LICENSE_REQUIRE_PROOF` (`1` forces PoP in dev), `LICENSE_ENFORCE_STORE` (`0` disables entitlement checks), `PUBLIC_APP_URL`, `PUBLIC_API_URL`
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

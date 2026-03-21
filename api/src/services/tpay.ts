@@ -131,6 +131,27 @@ export async function createTpayTransaction(input: TpayCreateTransactionInput): 
   };
 }
 
+export async function getTpayTransaction(transactionId: string): Promise<any> {
+  if (!transactionId) throw new Error('Missing transactionId');
+  const token = await getAccessToken();
+  const base = getTpayBaseUrl();
+
+  // Tpay OpenAPI uses /transactions for create; details are commonly available at /transactions/{id}
+  const res = await fetch(`${base}/transactions/${encodeURIComponent(transactionId)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(`Tpay get transaction failed (${res.status}): ${JSON.stringify(body)}`);
+  }
+  return body;
+}
+
 export function getPlanPrice(plan: "lite" | "pro" | "premium"): number {
   return TPAY_PLAN_PRICE[plan];
 }

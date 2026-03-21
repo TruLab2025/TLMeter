@@ -1,10 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AVAILABLE_STYLES, type SectionStatus } from "@/lib/profiles";
 import type { Plan, PlanFeatures } from "@/lib/license";
 import type { Tip } from "@/lib/tips";
 import type { SectionResult } from "@/lib/analyze/report-sections";
 import type { AnalysisResult } from "@/lib/analyze/types";
 import { PLATFORM_TARGETS, type PlatformKey } from "@/lib/platform-readiness";
+import ReferenceComparePanel from "@/components/analyze/ReferenceComparePanel";
 
 const STATUS_LABEL: Record<SectionStatus, string> = { ok: "Idealnie", warn: "Ostrzeżenie", bad: "Problem" };
 const STATUS_COLOR: Record<SectionStatus, string> = {
@@ -15,10 +19,13 @@ const STATUS_COLOR: Record<SectionStatus, string> = {
 
 interface AnalysisResultsProps {
   result: AnalysisResult | null;
+  referenceResult?: AnalysisResult | null;
+  referenceFile?: File | null;
   sections: SectionResult[];
   adMustBeClosed: boolean;
   analysisMode: "suggest" | "manual";
   platform: PlatformKey | null;
+  isPlatformMode: boolean;
   analyzedStyle: string | null;
   sessionPlan: Plan;
   stats: { total: number; today: number };
@@ -28,15 +35,28 @@ interface AnalysisResultsProps {
   tips: Tip[];
   showAllTips: boolean;
   onShowAllTips: () => void;
+  referenceDetected?: {
+    isReference: boolean;
+    confidence: number;
+    reason: string;
+    matchedStyle: string | null;
+    artist: string | null;
+    title: string | null;
+  } | null;
+  contributeToProfile?: boolean;
+  onAddToLibrary?: (params: { style: string }) => Promise<void> | void;
   planFeatures: PlanFeatures;
 }
 
 export default function AnalysisResults({
   result,
+  referenceResult,
+  referenceFile,
   sections,
   adMustBeClosed,
   analysisMode,
   platform,
+  isPlatformMode,
   analyzedStyle,
   sessionPlan,
   stats,
@@ -46,16 +66,153 @@ export default function AnalysisResults({
   tips,
   showAllTips,
   onShowAllTips,
+  referenceDetected,
+  contributeToProfile,
+  onAddToLibrary,
   planFeatures,
 }: AnalysisResultsProps) {
+  const [addingToLibrary, setAddingToLibrary] = useState(false);
+  const [libraryArtist, setLibraryArtist] = useState<string>("");
+  const [libraryStyle, setLibraryStyle] = useState<string>("");
+  const waitingForReferenceCompare = Boolean(
+    sessionPlan === "premium" && referenceFile && file && !referenceResult && !isPlatformMode
+  );
+  const fileExt = file?.name?.split(".").pop()?.toLowerCase() ?? null;
+  const fileFormat = file
+    ? (file.type
+      ? (fileExt ? `${file.type} · .${fileExt}` : file.type)
+      : (fileExt ? `.${fileExt}` : null))
+    : null;
+  const detectedStyleSlug = referenceDetected?.matchedStyle;
+  const detectedStyleObj = detectedStyleSlug ? AVAILABLE_STYLES.find((s) => s.slug === detectedStyleSlug) : null;
+  const detectedStyleLabel = detectedStyleObj?.name ?? detectedStyleSlug;
+
+  const styleSlugs = new Set(AVAILABLE_STYLES.map((s) => s.slug));
+  const styleOptions = useMemo(
+    () => AVAILABLE_STYLES.map((s) => ({ value: s.slug, label: s.name })),
+    []
+  );
+  const libraryStyleForSubmit =
+    (detectedStyleSlug && styleSlugs.has(detectedStyleSlug as any) ? detectedStyleSlug : null)
+    ?? (analyzedStyle && styleSlugs.has(analyzedStyle as any) ? analyzedStyle : null)
+    ?? (result?.styleMatch?.selected_genre && styleSlugs.has(result.styleMatch.selected_genre as any) ? result.styleMatch.selected_genre : null)
+    ?? "rock";
+
+  useEffect(() => {
+    if (!referenceDetected) return;
+    if (!libraryStyle) setLibraryStyle(libraryStyleForSubmit);
+    if (!libraryArtist) setLibraryArtist(referenceDetected.artist ?? "");
+  }, [libraryArtist, libraryStyle, libraryStyleForSubmit, referenceDetected]);
+
+  const canShowLibraryPrompt = Boolean(
+    result &&
+    !isPlatformMode &&
+    referenceDetected &&
+    referenceDetected.confidence > 0 &&
+    referenceDetected.confidence < 0.9 &&
+    !contributeToProfile
+  );
+
+  const handleAddToLibrary = useCallback(async () => {
+    if (!onAddToLibrary) return;
+    setAddingToLibrary(true);
+    try {
+      await onAddToLibrary({ style: libraryStyle || libraryStyleForSubmit });
+    } finally {
+      setAddingToLibrary(false);
+    }
+  }, [libraryStyle, libraryStyleForSubmit, onAddToLibrary]);
+
   if (sections.length === 0 || adMustBeClosed) {
     return null;
   }
 
   return (
     <div className="animate-fade-in">
-      {platform ? (() => {
-        const platformName = PLATFORM_TARGETS[platform].name;
+      {result && referenceFile && file && !referenceResult && !isPlatformMode && sessionPlan === "premium" && (
+        <div className="card mt-6 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-bold text-[var(--text-primary)]">Porównanie z referencją</div>
+            <div className="text-[10px] text-[var(--text-muted)] font-mono truncate">
+              Trwa analiza referencji…
+            </div>
+          </div>
+          <div className="mt-2 text-sm text-[var(--text-secondary)]">
+            Wyniki miksu są już gotowe — dane porównawcze pojawią się automatycznie, gdy referencja się przeliczy.
+          </div>
+        </div>
+      )}
+      {result && referenceResult && referenceFile && file && !isPlatformMode && (
+        <ReferenceComparePanel
+          mix={result}
+          reference={referenceResult}
+          mixName={file.name}
+          referenceName={referenceFile.name}
+          mixFile={file}
+          referenceFile={referenceFile}
+        />
+      )}
+      {canShowLibraryPrompt && (
+        <div className="card p-4 mb-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="text-2xl leading-none">{referenceDetected?.isReference ? "✨" : "🔍"}</div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-[var(--text-primary)]">
+                  {referenceDetected?.isReference ? "Wykryta referencja" : "Możliwa referencja"}
+                  {detectedStyleLabel ? (
+                    <span className="ml-2 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] uppercase tracking-widest">
+                      <span>{detectedStyleLabel}</span>
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-sm text-[var(--text-secondary)] truncate">
+                  {referenceDetected?.reason}
+                  <span className="text-[var(--text-muted)] ml-2">({Math.round((referenceDetected?.confidence ?? 0) * 100)}%)</span>
+                </div>
+                <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Styl</span>
+                    <select
+                      value={libraryStyle || libraryStyleForSubmit}
+                      onChange={(e) => setLibraryStyle(e.target.value)}
+                      className="rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-1.5 text-sm text-[var(--text-primary)]"
+                    >
+                      {styleOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] whitespace-nowrap">Zespół</span>
+                    <input
+                      value={libraryArtist}
+                      onChange={(e) => setLibraryArtist(e.target.value)}
+                      placeholder={referenceDetected?.artist ?? "np. Nirvana"}
+                      className="w-full md:w-56 rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-1.5 text-sm text-[var(--text-primary)]"
+                    />
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] md:ml-2">
+                    Nazwa zespołu jest tylko lokalnie (nie wysyłamy jej).
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddToLibrary}
+              disabled={addingToLibrary}
+              className={`btn btn-outline btn-sm ${addingToLibrary ? "opacity-60 cursor-not-allowed" : ""}`}
+              title={`Dodaj anonimowe metryki DSP do biblioteki stylu: ${libraryStyleForSubmit}`}
+            >
+              {addingToLibrary ? "Dodaję…" : "Dodaj do biblioteki"}
+            </button>
+          </div>
+        </div>
+      )}
+      {isPlatformMode ? (() => {
+        const platformName = platform ? PLATFORM_TARGETS[platform].name : "wybraną platformę";
         const score = calculatePlatformScore(sections);
         const analysisSeconds = result?.analysisDurationMs ? (result.analysisDurationMs / 1000).toFixed(2) : null;
         const fileSizeMb = file ? (file.size / 1024 / 1024).toFixed(1) : null;
@@ -109,16 +266,22 @@ export default function AnalysisResults({
                       <span className="font-mono text-[var(--text-primary)]">{durationSec}s</span>
                     </div>
                   )}
-                  {sampleRate && (
-                    <div className="flex items-center justify-between gap-3 border-b border-[var(--border)]/70 pb-1">
-                      <span className="text-[var(--text-muted)]">Sample rate</span>
-                      <span className="font-mono text-[var(--text-primary)]">{sampleRate} Hz</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--text-muted)]">Tryb analizy</span>
-                    <span className="text-[var(--text-primary)]">Platforma</span>
-                  </div>
+	                  {sampleRate && (
+	                    <div className="flex items-center justify-between gap-3 border-b border-[var(--border)]/70 pb-1">
+	                      <span className="text-[var(--text-muted)]">Sample rate</span>
+	                      <span className="font-mono text-[var(--text-primary)]">{sampleRate} Hz</span>
+	                    </div>
+	                  )}
+	                  {fileFormat && (
+	                    <div className="flex items-center justify-between gap-3 border-b border-[var(--border)]/70 pb-1">
+	                      <span className="text-[var(--text-muted)]">Format</span>
+	                      <span className="font-mono text-[var(--text-primary)]">{fileFormat}</span>
+	                    </div>
+	                  )}
+	                  <div className="flex items-center justify-between gap-3">
+	                    <span className="text-[var(--text-muted)]">Tryb analizy</span>
+	                    <span className="text-[var(--text-primary)]">Platforma</span>
+	                  </div>
                   <div className="mt-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)]/60">
                     <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mb-2">Statystyki globalne</div>
                     <div className="flex items-center justify-between gap-3 pb-1 border-b border-[var(--border)]/70">
@@ -188,7 +351,9 @@ export default function AnalysisResults({
                 {analyzedStyle && (
                   <button
                     onClick={downloadCoreJson}
-                    className="btn btn-outline btn-sm w-full justify-center flex items-center gap-2 group hover:border-[var(--accent)] transition-all mb-4"
+                    disabled={waitingForReferenceCompare}
+                    title={waitingForReferenceCompare ? "Poczekaj na zakończenie analizy referencji, aby pobrać pełny raport porównawczy." : undefined}
+                    className={`btn btn-outline btn-sm w-full justify-center flex items-center gap-2 group transition-all mb-4 ${waitingForReferenceCompare ? "opacity-50 cursor-not-allowed" : "hover:border-[var(--accent)]"}`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-[var(--accent)]"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
                     <span className="font-bold">Pobierz {sessionPlan.toUpperCase()} JSON</span>
@@ -215,16 +380,22 @@ export default function AnalysisResults({
                       <span className="font-mono text-[var(--text-primary)]">{durationSec}s</span>
                     </div>
                   )}
-                  {sampleRate && (
-                    <div className="flex items-center justify-between gap-3 border-b border-[var(--border)]/70 pb-1">
-                      <span className="text-[var(--text-muted)]">Sample rate</span>
-                      <span className="font-mono text-[var(--text-primary)]">{sampleRate} Hz</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--text-muted)]">Tryb analizy</span>
-                    <span className="text-[var(--text-primary)]">{analysisMode === "suggest" ? "Auto (Sugeruj)" : "Manual"}</span>
-                  </div>
+	                  {sampleRate && (
+	                    <div className="flex items-center justify-between gap-3 border-b border-[var(--border)]/70 pb-1">
+	                      <span className="text-[var(--text-muted)]">Sample rate</span>
+	                      <span className="font-mono text-[var(--text-primary)]">{sampleRate} Hz</span>
+	                    </div>
+	                  )}
+	                  {fileFormat && (
+	                    <div className="flex items-center justify-between gap-3 border-b border-[var(--border)]/70 pb-1">
+	                      <span className="text-[var(--text-muted)]">Format</span>
+	                      <span className="font-mono text-[var(--text-primary)]">{fileFormat}</span>
+	                    </div>
+	                  )}
+	                  <div className="flex items-center justify-between gap-3">
+	                    <span className="text-[var(--text-muted)]">Tryb analizy</span>
+	                    <span className="text-[var(--text-primary)]">{analysisMode === "suggest" ? "Auto (Sugeruj)" : "Manual"}</span>
+	                  </div>
                   <div className="mt-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)]/60">
                     <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mb-2">Statystyki globalne</div>
                     <div className="flex items-center justify-between gap-3 pb-1 border-b border-[var(--border)]/70">
@@ -274,16 +445,16 @@ export default function AnalysisResults({
                 <div className="meter-fill" style={{ width: `${section.score}%`, background: STATUS_COLOR[section.status] }}></div>
               </div>
               <div className="text-xs text-[var(--text-muted)]">{section.detail}</div>
-              {section.recommendation && (
-                <div className="mt-3 pt-3 border-t border-[var(--border)] text-xs text-[var(--text-secondary)] flex items-start gap-2">
-                  <span className="shrink-0 mt-0.5">
-                    {section.status === "ok" ? "✅" : section.status === "warn" ? "⚠️" : "🚨"}
-                  </span>
-                  <span>
-                    <span className="font-semibold text-[var(--accent)]">Rekomendacja:</span> {section.recommendation}
-                  </span>
-                </div>
-              )}
+	              {section.recommendation && (
+	                <div className="mt-3 pt-3 border-t border-[var(--border)] text-sm text-[var(--text-secondary)] flex items-start gap-2 leading-relaxed">
+	                  <span className="shrink-0 mt-0.5">
+	                    {section.status === "ok" ? "✅" : section.status === "warn" ? "⚠️" : "🚨"}
+	                  </span>
+	                  <span>
+	                    <span className="font-semibold text-[var(--accent)]">Rekomendacja:</span> {section.recommendation}
+	                  </span>
+	                </div>
+	              )}
             </div>
           </div>
         ))}
@@ -346,10 +517,11 @@ export default function AnalysisResults({
         </div>
       )}
 
-      {!platform && tips.length > 0 && (
-        <div className="mb-20 animate-fade-in pt-8 border-t border-[var(--border)]">
+      {tips.length > 0 && (
+        <div className="mb-12 animate-fade-in pt-8 border-t border-[var(--border)]">
           <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <span>🔍</span> Pełna analiza problemów & Porady DAW
+            <span>{isPlatformMode ? "🎯" : "🔍"}</span>
+            <span>{isPlatformMode ? "Wskazówki pod platformę" : "Pełna analiza problemów & Porady DAW"}</span>
           </h2>
           <div className="flex flex-col gap-4">
             {(showAllTips ? tips : tips.slice(0, 3)).map((tip, index) => {

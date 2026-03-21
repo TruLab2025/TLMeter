@@ -73,25 +73,46 @@ export async function runAudioAnalysisPipeline(params: {
   if (isAborted()) throw new Error("Analiza została anulowana.");
   onProgress({ stage: "Analiza DSP...", detail: "loudness" });
 
-  let analyzeAudioBuffer: (buffer: AudioBuffer, options: object) => Promise<unknown>;
+  let analyzeAudioBufferInWorker: (params: {
+    audioBuffer: AudioBuffer;
+    options: {
+      frameMs: number;
+      hopMs: number;
+      rolloffPercent: number;
+      forceEssentia?: boolean;
+      analysisWindowSec?: number;
+      truePeakFractions?: number[];
+    };
+    onProgress?: (progress: AnalysisProgress) => void;
+    isAborted?: () => boolean;
+  }) => Promise<unknown>;
   try {
-    ({ analyzeAudioBuffer } = await import("@/lib/dsp/analyze"));
+    ({ analyzeAudioBufferInWorker } = await import("@/lib/dsp/analyze-worker-client"));
   } catch (error) {
-    console.error("[ANALYZA] Błąd importu analyzeAudioBuffer", error);
+    console.error("[ANALYZA] Błąd importu analyzeAudioBufferInWorker", error);
     throw error;
   }
 
   const isPremium = plan === "premium";
+  const analysisWindowSec =
+    plan === "premium" ? 20 :
+      plan === "pro" ? 25 :
+        30;
+  // Keep TruePeak lightweight for snappy UX (especially in compare mode).
+  const truePeakFractions = [0.5];
   let raw: AnalysisResult;
   try {
-    raw = await analyzeAudioBuffer(audioBuffer, {
-      frameMs: isPremium ? 128 : 46,
-      hopMs: isPremium ? 64 : 23,
-      rolloffPercent: 95,
-      forceEssentia: isPremium,
+    raw = await analyzeAudioBufferInWorker({
+      audioBuffer,
+      onProgress,
       isAborted,
-      onProgress: (progress: AnalysisProgress) => {
-        if (!isAborted()) onProgress(progress);
+      options: {
+        frameMs: isPremium ? 128 : 46,
+        hopMs: isPremium ? 64 : 23,
+        rolloffPercent: 95,
+        forceEssentia: isPremium,
+        analysisWindowSec,
+        truePeakFractions,
       },
     }) as AnalysisResult;
   } catch (error) {

@@ -6,6 +6,11 @@ export interface AnalysisReportInput {
     integratedLufs: number | null;
     truePeakDbtp: number | null;
     lra: number | null;
+    clipping?: {
+      clippedSamples?: number;
+      clipEvents?: number;
+      clipThresholdAbs?: number;
+    };
     energyDistribution: { low: number; mid: number; high: number };
     stereo?: { correlation?: number };
     spectral?: {
@@ -13,7 +18,7 @@ export interface AnalysisReportInput {
       hfcMean?: number;
     };
     transients?: { onsetStrengthMean?: number };
-    rhythm?: { tempoBpm?: number };
+    rhythm?: { tempoBpm?: number; tempoStd?: number | null; tempoConfidence?: number };
   };
 }
 
@@ -45,6 +50,11 @@ function formatPct(v: number): string {
 function formatNum(v: number | null | undefined, decimals = 2): string {
   if (v === null || v === undefined || !isFinite(v)) return "—";
   return v.toFixed(decimals);
+}
+
+function formatInt(v: number | null | undefined): string {
+  if (v === null || v === undefined || !isFinite(v)) return "—";
+  return `${Math.round(v)}`;
 }
 
 function getRecommendationText(status: SectionStatus, label: string) {
@@ -104,7 +114,9 @@ export function buildReportSections(
       value: formatLufs(g.integratedLufs),
       score: scoreInRange(g.integratedLufs ?? -99, t.lufs_integrated.min, t.lufs_integrated.max, t.lufs_integrated.ideal),
       desc: "LUFS decyduje w odbiorze o tym, jak głośno zabrzmi Twój miks względem innych na Spotify czy w radiu.",
-      detail: plan === "free" ? "Analiza Peak/LRA dostępna w planie Lite" : `True Peak: ${formatDb(g.truePeakDbtp)}  |  LRA: ${formatNum(g.lra, 1)} LU`,
+      detail: plan === "free"
+        ? "Analiza Peak/LRA dostępna w planie Lite"
+        : `True Peak: ${formatDb(g.truePeakDbtp)}  |  LRA: ${formatNum(g.lra, 1)} LU  |  Clipping: ${formatInt(g.clipping?.clipEvents)}`,
       locked: false,
     },
     {
@@ -147,14 +159,19 @@ export function buildReportSections(
       detail: "Siła transjentów",
       locked: unlockedCount < 6,
     },
-    {
-      label: "Beat Stability",
-      value: g.rhythm?.tempoBpm ? `${Math.round(g.rhythm.tempoBpm)} BPM` : "—",
-      score: g.rhythm?.tempoBpm ? 95 : 0,
-      desc: "Sztywność uderzeń sekcji rytmicznej i poprawność groovu w oparciu o wykryte BPM utworu.",
-      detail: "Estymacja tempa",
-      locked: unlockedCount < 7,
-    },
+	    {
+	      label: "Beat Stability",
+	      value: g.rhythm?.tempoBpm
+	        ? `${Math.round(g.rhythm.tempoBpm)} BPM${typeof g.rhythm.tempoConfidence === "number" && g.rhythm.tempoConfidence < 0.18 ? " (low conf.)" : ""}`
+	        : "—",
+	      score: g.rhythm?.tempoBpm ? 95 : 0,
+	      desc: "Sztywność uderzeń sekcji rytmicznej i poprawność groovu w oparciu o wykryte BPM utworu.",
+	      detail:
+	        typeof g.rhythm?.tempoConfidence === "number"
+	          ? `Estymacja tempa · confidence ${(g.rhythm.tempoConfidence * 100).toFixed(0)}%`
+	          : "Estymacja tempa",
+	      locked: unlockedCount < 7,
+	    },
   ];
 
   return sectionsData.map((section) => {

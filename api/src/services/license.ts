@@ -7,7 +7,7 @@ export function generateLicenseCode() {
     return 'TRUL-' + bytes.toString('hex').match(/.{1,4}/g)?.join('-').toUpperCase().substring(0, 14);
 }
 
-export async function createLicense(plan: string, email: string, stripeSessionId?: string) {
+export async function createLicense(plan: string, email: string, stripeSessionId?: string, deviceId?: string) {
     const code = generateLicenseCode();
     const deviceLimit = plan === 'premium' ? 3 : (plan === 'pro' ? 2 : 1);
 
@@ -19,6 +19,7 @@ export async function createLicense(plan: string, email: string, stripeSessionId
         plan: plan,
         status: 'unused',
         email: email,
+        fingerprint: deviceId || null,
         device_limit: deviceLimit,
         stripe_session_id: stripeSessionId || null,
     });

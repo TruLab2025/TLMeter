@@ -276,6 +276,59 @@ export function detectIfReference(
   };
 }
 
+function isKnownStyle(style: string | null | undefined): style is string {
+  return typeof style === "string" && style in REFERENCE_ARTISTS;
+}
+
+/**
+ * Detect reference even when user didn't pick a style (e.g. "Sugeruj") or picked a different style.
+ * - If `selectedStyle` is known, we still search other styles and return the best match (so user can add to the right library).
+ * - If `selectedStyle` is missing/unknown, we auto-detect across all known styles.
+ */
+export function detectReference(
+  filename: string,
+  selectedStyle?: string | null
+) {
+  const parsed = parseFilename(filename);
+  const userSelectedStyle = isKnownStyle(selectedStyle) ? selectedStyle : null;
+
+  // If filename explicitly encodes the style, trust it.
+  if (isKnownStyle(parsed.style)) {
+    const base = detectIfReference(filename, parsed.style);
+    return {
+      ...base,
+      selectedStyle: userSelectedStyle ?? (selectedStyle ?? "auto"),
+      matchedStyle: parsed.style,
+      isReference: true,
+      confidence: 0.95,
+      reason: userSelectedStyle && userSelectedStyle !== parsed.style
+        ? `Filename wskazuje style: ${parsed.style} (wybrany styl: ${userSelectedStyle})`
+        : `Filename wskazuje style: ${parsed.style}`,
+      matchType: "style-marker" as const,
+    };
+  }
+
+  const candidates = Object.keys(REFERENCE_ARTISTS).map((style) => detectIfReference(filename, style));
+
+  // Prefer the user-selected style if it's a strong reference match; otherwise pick best overall.
+  const selectedCandidate = userSelectedStyle ? detectIfReference(filename, userSelectedStyle) : null;
+  const bestOverall = candidates.reduce((best, current) => (current.confidence > best.confidence ? current : best), candidates[0]);
+
+  const pick =
+    selectedCandidate && selectedCandidate.isReference && selectedCandidate.confidence >= (bestOverall.confidence - 0.05)
+      ? selectedCandidate
+      : bestOverall;
+
+  return {
+    ...pick,
+    selectedStyle: userSelectedStyle ?? (selectedStyle ?? "auto"),
+    reason:
+      pick.isReference && userSelectedStyle && pick.matchedStyle && pick.matchedStyle !== userSelectedStyle
+        ? `${pick.reason} (wybrany styl: ${userSelectedStyle})`
+        : pick.reason,
+  };
+}
+
 /**
  * Pobierz listę znanych stylów
  */

@@ -73,11 +73,10 @@ export async function submitMetricsToServer(
   style: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
+    const { getAuthHeaders } = await import("@/lib/license");
     const response = await fetch("/api/analyses/submit-metrics", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         style,
         metrics: {
@@ -118,5 +117,4 @@ export async function submitMetricsToServer(
     return { success: false, error: "Network error" };
   }
 }
-
 

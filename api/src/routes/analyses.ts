@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { requireAdminApiKey } from '../middleware/security';
 import { eq, or } from 'drizzle-orm';
 import { ANALYSES_PUBLIC_OFFSET } from '../config/stats';
+import { sql } from 'drizzle-orm';
 
 const router = express.Router();
 
@@ -43,8 +44,8 @@ router.post('/', async (req, res) => {
             license_id: resolvedLicenseId, // null = free user or unmatched code
             style,
             filename: filename || 'Unknown',
-            summary: {},
-            full_data: {},
+            summary: JSON.stringify({}),
+            full_data: JSON.stringify({}),
             score: null,
             created_at: created_at ? new Date(created_at) : new Date(),
         };
@@ -73,8 +74,11 @@ router.get('/', requireAdminApiKey, async (req, res) => {
 // GET /api/analyses/count - liczba wszystkich analiz (publiczny, do licznika na HP)
 router.get('/count', async (req, res) => {
     try {
-        // Poprawne zliczanie analiz przez drizzle-orm
-        const count = await db.select().from(analyses).execute().then(rows => rows.length + ANALYSES_PUBLIC_OFFSET);
+        const row = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(analyses)
+            .get();
+        const count = (Number(row?.count ?? 0) || 0) + ANALYSES_PUBLIC_OFFSET;
         res.json({ count });
     } catch (error) {
         console.error('Error counting analyses:', error);

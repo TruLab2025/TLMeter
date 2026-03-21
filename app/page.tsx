@@ -13,13 +13,20 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [analysisCount, setAnalysisCount] = useState<number | null>(null);
   const formattedAnalysisCount = (analysisCount ?? 0).toLocaleString("pl-PL");
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+  const apiUrl = (path: string) => {
+    if (!API_BASE) return path;
+    const base = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+    const p = path.startsWith("/") ? path : `/${path}`;
+    return `${base}${p}`;
+  };
 
   useEffect(() => {
-    fetch("/api/analyses/count")
+    fetch(apiUrl("/api/stats"))
       .then(res => res.json())
-      .then(data => setAnalysisCount(data.count))
+      .then(data => setAnalysisCount(typeof data?.total === "number" ? data.total : null))
       .catch(() => setAnalysisCount(null));
-  }, []);
+  }, [API_BASE]);
 
   return (
     <main className="min-h-screen grid-texture">

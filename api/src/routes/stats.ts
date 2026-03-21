@@ -2,24 +2,30 @@ import express from 'express';
 import { db } from '../db/index';
 import { analyses } from '../db/schema';
 import { ANALYSES_PUBLIC_OFFSET } from '../config/stats';
+import { and, gte, lt, sql } from 'drizzle-orm';
 
 const router = express.Router();
 
 // GET /api/stats - zwraca liczę wykonanych analiz i inne statystyki
 router.get('/', async (req, res) => {
     try {
-        const allAnalyses = await db.select().from(analyses);
-        const totalAnalyses = (allAnalyses?.length || 0) + ANALYSES_PUBLIC_OFFSET;
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        const analysesToday = (allAnalyses || []).filter(a => {
-            if (!a.created_at) return false;
-            const createdDate = new Date(a.created_at);
-            createdDate.setHours(0, 0, 0, 0);
-            return createdDate.getTime() === today.getTime();
-        }).length;
+        const totalRow = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(analyses)
+            .get();
+        const totalAnalyses = (Number(totalRow?.count ?? 0) || 0) + ANALYSES_PUBLIC_OFFSET;
+
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+
+        const todayRow = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(analyses)
+            .where(and(gte(analyses.created_at, start), lt(analyses.created_at, end)))
+            .get();
+        const analysesToday = Number(todayRow?.count ?? 0) || 0;
 
         res.json({
             total: totalAnalyses,

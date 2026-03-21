@@ -5,6 +5,9 @@ import { eq, and, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
+import { createAccessToken, getAccessTokenSecret, verifyAccessToken, type AccessPlan } from '../lib/token';
+import { requireDevelopmentOnly } from '../middleware/security';
+import { deriveDevSubId, upsertEntitlement } from '../services/entitlements';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex'));
@@ -156,6 +159,62 @@ router.post('/validate', validationLimiter, express.json(), async (req, res) => 
         // Token expired or invalid
         res.json({ valid: false, plan: 'free' });
     }
+});
+
+function extractBearerToken(headerValue: string | undefined): string | null {
+    if (!headerValue) return null;
+    const match = headerValue.match(/^Bearer\s+(.+)$/i);
+    if (!match) return null;
+    return match[1]?.trim() || null;
+}
+
+// Stateless token validation (no DB lookup)
+router.post('/validate-token', express.json(), (req, res) => {
+    const deviceId = req.header('x-device-id') || '';
+    if (!deviceId) {
+        return res.status(400).json({ valid: false, error: 'missing-device-id' });
+    }
+
+    const token = extractBearerToken(req.header('authorization')) || (typeof req.body?.token === 'string' ? req.body.token : '');
+    const secret = getAccessTokenSecret();
+    const result = verifyAccessToken(token, secret, deviceId);
+    if (!result.ok) {
+        return res.json({ valid: false, error: result.error });
+    }
+    return res.json({ valid: true, payload: result.payload });
+});
+
+// Dry-run token issuer (DEV only) - simulates "payment success -> issue token"
+router.post('/dev-issue', requireDevelopmentOnly, express.json(), (req, res) => {
+    const deviceId = req.header('x-device-id') || (typeof req.body?.device_id === 'string' ? req.body.device_id : '');
+    if (!deviceId) {
+        return res.status(400).json({ error: 'missing-device-id' });
+    }
+
+    const requestedPlan = typeof req.body?.plan === 'string' ? req.body.plan : 'pro';
+    const plan: AccessPlan = (requestedPlan === 'lite' || requestedPlan === 'premium' || requestedPlan === 'pro')
+        ? requestedPlan
+        : 'pro';
+
+    const devicePub = typeof req.body?.device_pub === 'string' ? String(req.body.device_pub).trim() : '';
+    if (!devicePub || devicePub.length > 2048) {
+        return res.status(400).json({ error: 'missing-device-pub' });
+    }
+
+    const exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+    const sub = deriveDevSubId(devicePub);
+    const payload = { sub, device_id: deviceId, device_pub: devicePub, plan, exp };
+    void upsertEntitlement({ sub, plan, expiresAt: exp, devicePub })
+        .then(() => {
+            const token = createAccessToken(payload, getAccessTokenSecret());
+            return res.json({ token, payload });
+        })
+        .catch((error: unknown) => {
+            const msg = error instanceof Error ? error.message : String(error);
+            if (msg === 'device-limit') return res.status(403).json({ error: 'device-limit' });
+            if (msg === 'revoked') return res.status(403).json({ error: 'revoked' });
+            return res.status(500).json({ error: 'issue-failed' });
+        });
 });
 
 export default router;

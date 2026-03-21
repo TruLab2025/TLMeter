@@ -14,11 +14,13 @@ export default function HeroSection() {
         <br />
         <span className="text-[var(--accent)] glow-text">brzmi jak z płyty</span>
       </h1>
-      <p className="text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed">
+      <p className="text-xl text-[var(--text-secondary)] max-w-2xl md:max-w-3xl mx-auto mb-10 leading-relaxed">
         Obiektywna, cyfrowa analiza Twojej muzyki z domowego studia.
-        <br />
+        <br className="md:hidden" />{" "}
+        Sprawdź czy Twój miks trzyma standardy rynkowe zanim wyślesz go do masteringu albo na platformy streamingowe.
+        <br className="md:hidden" />{" "}
         Koniec zgadywania na oko, czy bas dudni, a gitary kłują po uszach.
-        <br />
+        <br className="md:hidden" />{" "}
         Uzyskaj gotowe podpowiedzi poprawy brzmienia z dedykacją dla muzyki gitarowej.
       </p>
       <div className="flex items-center justify-center gap-4 flex-wrap">

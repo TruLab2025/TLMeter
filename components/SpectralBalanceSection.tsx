@@ -9,12 +9,30 @@ const AUDIO_SOURCES = {
 
 type AudioVariant = keyof typeof AUDIO_SOURCES;
 
+function SpotifyIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      role="img"
+      aria-label="Spotify"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        fill="currentColor"
+        d="M12 1.5C6.201 1.5 1.5 6.201 1.5 12S6.201 22.5 12 22.5 22.5 17.799 22.5 12 17.799 1.5 12 1.5Zm4.83 15.18a.9.9 0 0 1-1.238.295c-2.959-1.81-6.687-2.22-11.078-1.217a.9.9 0 1 1-.402-1.754c4.852-1.109 9.012-.637 12.4 1.436a.9.9 0 0 1 .318 1.24Zm1.25-2.78a1.05 1.05 0 0 1-1.445.344c-3.385-2.082-8.544-2.684-12.55-1.468a1.05 1.05 0 1 1-.609-2.01c4.578-1.389 10.267-.712 14.164 1.677.494.304.65.952.34 1.457Zm.11-2.896c-4.06-2.41-10.758-2.633-14.633-1.458a1.2 1.2 0 1 1-.695-2.297c4.45-1.35 11.847-1.09 16.535 1.693a1.2 1.2 0 0 1-1.207 2.062Z"
+      />
+    </svg>
+  );
+}
+
 export default function SpectralBalanceSection() {
   const [active, setActive] = useState<AudioVariant>("original");
   const [playing, setPlaying] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [progressTop, setProgressTop] = useState(1);
   const [progressBottom, setProgressBottom] = useState(1);
+  const spotifyUrl = process.env.NEXT_PUBLIC_SG_SPOTIFY_URL || "https://open.spotify.com/";
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const originalBufferRef = useRef<AudioBuffer | null>(null);
@@ -267,7 +285,7 @@ export default function SpectralBalanceSection() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-4 sm:gap-6 mt-12 md:mt-28 mb-12 md:mb-16 items-center justify-center">
+      <div className="flex flex-wrap gap-4 sm:gap-6 mt-12 md:mt-28 mb-3 items-center justify-center">
         <button
           onClick={playing ? handleStop : () => void handlePlay()}
           className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-cyan-400 bg-cyan-400 text-black shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -307,6 +325,18 @@ export default function SpectralBalanceSection() {
         >
           Potem
         </button>
+      </div>
+
+      <div className="mt-3 mb-12 md:mb-16 flex justify-center px-4 text-center">
+        <a
+          href={spotifyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          <SpotifyIcon className="h-5 w-5 text-[#1DB954]" />
+          <span>Posłuchaj cały utwór na Spotify.</span>
+        </a>
       </div>
 
       <div className="mx-auto mb-10 mt-0 flex w-full max-w-5xl flex-col gap-4 px-4 md:flex-row md:gap-8 md:px-0">

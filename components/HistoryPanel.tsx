@@ -11,25 +11,34 @@ interface Props {
     onClear: () => void;
 }
 
-function DeltaRow({ d }: { d: MetricDelta }) {
-    const color =
-        d.trend === "better" ? "var(--ok)" :
-            d.trend === "worse" ? "var(--bad)" :
-                "var(--text-muted)";
-    const arrow = d.trend === "better" ? "↑" : d.trend === "worse" ? "↓" : "→";
+function deltaColor(delta: number) {
+    const abs = Math.abs(delta);
+    if (abs < 0.5) return "var(--ok)";
+    if (abs < 1.5) return "var(--warn)";
+    return "var(--bad)";
+}
 
+function DeltaMeter({ delta, maxAbs }: { delta: number | null; maxAbs: number }) {
+    const clamped = delta === null ? 0 : Math.max(-maxAbs, Math.min(maxAbs, delta));
+    const left = delta === null ? 50 : ((clamped + maxAbs) / (2 * maxAbs)) * 100;
+    const color = delta === null ? "var(--text-muted)" : deltaColor(delta);
     return (
-        <div className="flex items-center justify-between py-1.5 border-b border-[var(--border)] last:border-0">
-            <span className="text-xs text-[var(--text-secondary)]">{d.label}</span>
-            <div className="flex items-center gap-3 font-mono text-xs">
-                <span className="text-[var(--text-muted)]">{d.previous}</span>
-                <span style={{ color }} className="font-bold">
-                    {arrow} {d.deltaStr}
-                </span>
-                <span className="text-[var(--text-primary)]">{d.current}</span>
-            </div>
+        <div className="relative h-2 w-full rounded-full bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden">
+            <div className="absolute inset-y-0 left-1/2 w-px bg-[var(--border)]" />
+            <div
+                className="absolute top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-[var(--border)]"
+                style={{ left: `${left}%`, transform: "translate(-50%, -50%)", background: color }}
+            />
         </div>
     );
+}
+
+function maxAbsForKey(key: string): number {
+    if (key === "lufs") return 6;
+    if (key === "peak") return 3;
+    if (key === "low") return 20;
+    if (key === "score") return 25;
+    return 10;
 }
 
 export default function HistoryPanel({ history, current, plan, onClear }: Props) {
@@ -40,6 +49,7 @@ export default function HistoryPanel({ history, current, plan, onClear }: Props)
     const isPremium = plan === "premium";
     const compared = history[selectedIdx];
     const deltas: MetricDelta[] = current ? computeDeltas(current, compared.metrics) : [];
+    const comparedExt = compared?.filename?.split(".").pop()?.toUpperCase() ?? null;
 
     return (
         <div className="card mt-6 p-0 overflow-hidden">
@@ -66,7 +76,7 @@ export default function HistoryPanel({ history, current, plan, onClear }: Props)
                 {/* Sidebar – list of entries */}
                 {isPremium && history.length > 1 && (
                     <div className="w-48 shrink-0 border-r border-[var(--border)] bg-[rgba(0,0,0,0.2)]">
-                        {history.map((entry, idx) => (
+	                        {history.map((entry, idx) => (
                             <button
                                 key={entry.id}
                                 onClick={() => setSelectedIdx(idx)}
@@ -75,12 +85,15 @@ export default function HistoryPanel({ history, current, plan, onClear }: Props)
                                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                     }`}
                             >
-                                <div className="text-[11px] font-bold truncate">{entry.filename}</div>
-                                <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                                    {new Date(entry.timestamp).toLocaleDateString("pl-PL", {
-                                        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
-                                    })}
-                                </div>
+	                                <div className="text-[11px] font-bold truncate">{entry.filename}</div>
+	                                <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+	                                    {new Date(entry.timestamp).toLocaleDateString("pl-PL", {
+	                                        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+	                                    })}
+	                                    {entry.filename.includes(".") && (
+	                                      <span className="ml-1 opacity-70">· {entry.filename.split(".").pop()?.toUpperCase()}</span>
+	                                    )}
+	                                </div>
                                 <div className="text-[10px] mt-0.5">
                                     {entry.metrics.integratedLufs?.toFixed(1)} LUFS
                                     {entry.metrics.styleScore !== null && (
@@ -94,18 +107,19 @@ export default function HistoryPanel({ history, current, plan, onClear }: Props)
 
                 {/* Delta comparison panel */}
                 <div className="flex-1 p-5">
-                    <div className="flex items-center justify-between mb-3">
-                        <div>
-                            <div className="text-xs text-[var(--text-muted)]">Porównujesz z</div>
-                            <div className="text-sm font-bold text-[var(--text-primary)] truncate">{compared.filename}</div>
-                            <div className="text-[10px] text-[var(--text-muted)]">
-                                {new Date(compared.timestamp).toLocaleDateString("pl-PL", {
-                                    weekday: "short", day: "2-digit", month: "short",
-                                    hour: "2-digit", minute: "2-digit"
-                                })}
-                                {" · "}{compared.styleLabel}
-                            </div>
-                        </div>
+	                    <div className="flex items-center justify-between mb-3">
+	                        <div>
+	                            <div className="text-xs text-[var(--text-muted)]">Porównujesz z</div>
+	                            <div className="text-sm font-bold text-[var(--text-primary)] truncate">{compared.filename}</div>
+	                            <div className="text-[10px] text-[var(--text-muted)]">
+	                                {new Date(compared.timestamp).toLocaleDateString("pl-PL", {
+	                                    weekday: "short", day: "2-digit", month: "short",
+	                                    hour: "2-digit", minute: "2-digit"
+	                                })}
+	                                {" · "}{compared.styleLabel}
+	                                {comparedExt ? ` · ${comparedExt}` : ""}
+	                            </div>
+	                        </div>
                         {compared.metrics.styleScore !== null && (
                             <div className="text-right">
                                 <div className="text-[10px] text-[var(--text-muted)]">Styl poprzedni</div>
@@ -117,8 +131,48 @@ export default function HistoryPanel({ history, current, plan, onClear }: Props)
                     </div>
 
                     {deltas.length > 0 ? (
-                        <div className="space-y-0">
-                            {deltas.map(d => <DeltaRow key={d.key} d={d} />)}
+                        <div className="overflow-x-auto">
+                            <table className="w-full table-fixed text-sm">
+                                <colgroup>
+                                    <col />
+                                    <col style={{ width: 170 }} />
+                                    <col style={{ width: 340 }} />
+                                    <col style={{ width: 170 }} />
+                                </colgroup>
+                                <thead>
+                                    <tr className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border)]">
+                                        <th className="py-2 pr-4 text-left font-semibold">Metryka</th>
+                                        <th className="py-2 px-3 text-right font-semibold">Poprzednia</th>
+                                        <th className="py-2 px-3 text-center font-semibold">Porównanie</th>
+                                        <th className="py-2 px-3 text-left font-semibold">Obecna</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {deltas.map((d) => {
+                                        const deltaNum = d.delta ?? null;
+                                        const color = deltaNum === null ? "var(--text-muted)" : deltaColor(deltaNum);
+                                        return (
+                                            <tr key={d.key} className="border-b border-[var(--border)] last:border-0">
+                                                <td className="py-3 pr-4 text-[var(--text-secondary)] whitespace-nowrap">{d.label}</td>
+                                                <td className="py-3 px-3 text-right font-mono text-sm text-[var(--text-muted)] whitespace-nowrap">{d.previous}</td>
+                                                <td className="py-2 px-3">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <div className="flex items-center justify-between text-xs font-mono">
+                                                            <span className="text-[var(--text-muted)]">POP</span>
+                                                            <span className="font-bold text-sm" style={{ color }}>
+                                                                {d.deltaStr}
+                                                            </span>
+                                                            <span className="text-[var(--text-muted)]">NOW</span>
+                                                        </div>
+                                                        <DeltaMeter delta={deltaNum} maxAbs={maxAbsForKey(d.key)} />
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-3 text-left font-mono text-sm text-[var(--text-primary)] whitespace-nowrap">{d.current}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     ) : (
                         <div className="text-sm text-[var(--text-muted)] text-center py-4">
