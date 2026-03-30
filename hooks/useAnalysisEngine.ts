@@ -3,6 +3,8 @@ import { useState } from "react";
 import type { AnalysisResult } from "@/lib/analyze/types";
 import { analyzeAudioBuffer } from "@/lib/dsp/analyze.js";
 
+type AnalysisOptions = Record<string, unknown>;
+
 export function useAnalysisEngine() {
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -10,7 +12,7 @@ export function useAnalysisEngine() {
   const [error, setError] = useState<string | null>(null);
 
   // Funkcja do uruchamiania analizy audio
-  const runAnalysis = async (audioBuffer: AudioBuffer, options: any = {}) => {
+  const runAnalysis = async (audioBuffer: AudioBuffer, options: AnalysisOptions = {}) => {
     setAnalyzing(true);
     setProgress(0);
     setError(null);
@@ -20,7 +22,7 @@ export function useAnalysisEngine() {
       const res = await analyzeAudioBuffer(audioBuffer, options);
       setResult(res);
       setProgress(100);
-    } catch (e) {
+    } catch {
       setError("Błąd podczas analizy pliku audio.");
     } finally {
       setAnalyzing(false);

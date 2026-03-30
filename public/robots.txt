@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /api/
+
+Sitemap: https://trulab.pl/sitemap.xml
+Host: trulab.pl

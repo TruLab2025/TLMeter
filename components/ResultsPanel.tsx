@@ -1,5 +1,11 @@
 import React from "react";
 
-export const ResultsPanel = ({ sections }: { sections: any[] }) => (
-  <div>Results panel placeholder</div>
+type ResultsPanelProps = {
+  sections: Array<Record<string, unknown>>;
+};
+
+export const ResultsPanel: React.FC<ResultsPanelProps> = ({ sections }) => (
+  <div data-section-count={sections.length}>
+    Results panel placeholder ({sections.length} sections)
+  </div>
 );

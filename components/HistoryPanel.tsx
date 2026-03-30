@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { HistoryEntry, MetricDelta } from "@/lib/history";
-import { computeDeltas, clearHistory } from "@/lib/history";
+import { computeDeltas } from "@/lib/history";
 
 interface Props {
     history: HistoryEntry[];

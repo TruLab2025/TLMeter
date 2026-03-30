@@ -1,4 +1,5 @@
 "use client";
+import Script from "next/script";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import BrandLogo from "@/components/BrandLogo";
@@ -8,21 +9,56 @@ import LandingNav from "@/components/landing/LandingNav";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
 import SiteFooter from "@/components/SiteFooter";
 import { dictionary, faq, howItWorks, librariesInfo, plans, testimonials } from "@/lib/landing/content";
+import { buildAnalyzerLink } from "@/lib/urls";
+
+const MARKETING_URL = process.env.PUBLIC_APP_URL || "https://trulab.pl";
+
+const schemaFAQ = faq.slice(0, 6).map((item) => ({
+  "@type": "Question",
+  name: item.q,
+  acceptedAnswer: {
+    "@type": "Answer",
+    text: item.a,
+  },
+}));
+
+const landingStructuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "TruLab Meter",
+    url: MARKETING_URL,
+    sameAs: ["https://www.instagram.com/"],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    url: MARKETING_URL,
+    name: "TruLab Meter",
+    description: "Profesjonalna analiza miksu dla rocka, grunge i metalu. Raporty w kilka sekund.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${MARKETING_URL}/?q={search_term}`,
+      "query-input": "required name=search_term",
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: schemaFAQ,
+  },
+];
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [analysisCount, setAnalysisCount] = useState<number | null>(null);
   const formattedAnalysisCount = (analysisCount ?? 0).toLocaleString("pl-PL");
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
-  const apiUrl = (path: string) => {
-    if (!API_BASE) return path;
-    const base = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
-    const p = path.startsWith("/") ? path : `/${path}`;
-    return `${base}${p}`;
-  };
 
   useEffect(() => {
-    fetch(apiUrl("/api/stats"))
+    const base = API_BASE ? API_BASE.replace(/\/+$/, "") : "";
+    const path = base ? `${base}/api/stats` : "/api/stats";
+    fetch(path)
       .then(res => res.json())
       .then(data => setAnalysisCount(typeof data?.total === "number" ? data.total : null))
       .catch(() => setAnalysisCount(null));
@@ -30,6 +66,11 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen grid-texture">
+      <Script
+        id="landing-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(landingStructuredData) }}
+      />
       <LandingNav
         mobileMenuOpen={mobileMenuOpen}
         onToggleMobileMenu={() => setMobileMenuOpen((open) => !open)}
@@ -343,7 +384,7 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-card)] to-transparent opacity-80 z-0"></div>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 z-10">Kontroluj jakość swoich miksów</h2>
           <p className="text-[var(--text-secondary)] mb-8 z-10 max-w-xl">Uchroń domowy budżet przed setkami płatnych wtyczek analizujących i opłacaniem re-masterów. Sprawdzaj błędy za darmo już dziś i uzyskaj darmowe porady jak je szybko poprawić.</p>
-          <Link href="/analyze" className="btn btn-primary text-lg px-10 py-5 z-10 shadow-[0_5px_30px_rgba(0,212,255,0.4)] hover:shadow-[0_5px_40px_rgba(0,212,255,0.6)]">
+          <Link href={buildAnalyzerLink()} className="btn btn-primary text-lg px-10 py-5 z-10 shadow-[0_5px_30px_rgba(0,212,255,0.4)] hover:shadow-[0_5px_40px_rgba(0,212,255,0.6)]">
             Analizuj miks za darmo
           </Link>
         </div>

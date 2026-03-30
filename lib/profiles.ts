@@ -29,7 +29,7 @@ export interface StyleProfile {
 
 export type StyleSlug = "rock" | "grunge" | "metal" | "pop" | "hiphop" | "edm" | "house" | "techno" | "trap" | "indie" | "folk" | "classic" | "jazz" | "rnb" | "ambient";
 
-let cache: Record<string, StyleProfile> = {};
+const cache: Record<string, StyleProfile> = {};
 
 /** Loads a style profile JSON from /data/profiles/ */
 export async function loadProfile(slug: StyleSlug): Promise<StyleProfile> {

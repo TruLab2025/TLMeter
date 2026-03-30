@@ -9,7 +9,7 @@ import {
   AnalysisMetrics,
   MetricPercentiles,
 } from "./types";
-import { calculatePercentiles, blendPercentiles } from "./percentiles";
+import { calculatePercentiles, calculatePercentilesRaw, blendPercentiles } from "./percentiles";
 import {
   getStyleProfile,
   updateProfileWithAggregation,
@@ -76,7 +76,10 @@ export function metricsToRecord(
 ): MetricsRecord {
   // Strip all PII (Personally Identifiable Information)
 
-  const record: MetricsRecord = {
+  type MetricsRecordExtended = MetricsRecord & Record<string, unknown>;
+  const piiFields = ["filename", "user_id", "artist", "title"] as const;
+
+  const record: MetricsRecordExtended = {
     style,
     metrics: {
       lufs: metrics.lufs,
@@ -105,12 +108,14 @@ export function metricsToRecord(
   };
 
   // SAFETY CHECK: Upewnij się że nie ma filename czy identyfikatorów
-  if ((record as any).filename || (record as any).user_id || (record as any).artist || (record as any).title) {
+  const hasPii = piiFields.some((field) => field in record);
+  if (hasPii) {
     console.warn("⚠️ PII detected in metrics record - stripping");
-    delete (record as any).filename;
-    delete (record as any).user_id;
-    delete (record as any).artist;
-    delete (record as any).title;
+    for (const field of piiFields) {
+      if (field in record) {
+        delete record[field];
+      }
+    }
   }
 
   return record;
@@ -139,13 +144,12 @@ export function aggregateMetricsForStyle(
     return null;
   }
 
-  const metricCalculations: Record<
-    string,
-    {
-      values: number[];
-      percentiles: MetricPercentiles;
-    }
-  > = {};
+  type MetricCalculation = {
+    values: number[];
+    percentiles: MetricPercentiles | null;
+  };
+
+  const metricCalculations: Record<string, MetricCalculation> = {};
 
   const engineVersions: Record<string, number> = {};
 
@@ -155,7 +159,7 @@ export function aggregateMetricsForStyle(
       if (typeof value !== "number") return;
 
       if (!metricCalculations[metricName]) {
-        metricCalculations[metricName] = { values: [], percentiles: {} as any };
+        metricCalculations[metricName] = { values: [], percentiles: null };
       }
 
       metricCalculations[metricName].values.push(value);
@@ -172,6 +176,7 @@ export function aggregateMetricsForStyle(
       data.percentiles = calculatePercentiles(data.values);
     } catch (e) {
       console.error(`Failed to calculate percentiles for ${metricName}:`, e);
+      data.percentiles = calculatePercentilesRaw(data.values || [0]);
     }
   });
 

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import { howItWorks, testimonials } from "@/lib/landing/content";
 import SiteFooter from "@/components/SiteFooter";
+import { buildAnalyzerLink } from "@/lib/urls";
 
 export default function ActivatePage() {
     const [code, setCode] = useState("");
@@ -33,7 +34,7 @@ export default function ActivatePage() {
             setSuccess(true);
             // Wait a bit to show success message
             setTimeout(() => {
-                router.push("/analyze");
+                router.push(buildAnalyzerLink());
             }, 1500);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Błąd aktywacji. Sprawdź kod i spróbuj ponownie.");
@@ -63,7 +64,7 @@ export default function ActivatePage() {
 
             <div className="flex-1 flex items-center justify-center p-6 pt-6 md:p-6">
                 <div className="max-w-5xl w-full">
-                    <Link href="/analyze" className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors md:mb-6">
+                    <Link href={buildAnalyzerLink()} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors md:mb-6">
                         <span aria-hidden="true">←</span>
                         <span>Powrót do analizy</span>
                     </Link>

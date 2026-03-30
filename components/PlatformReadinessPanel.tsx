@@ -1,5 +1,5 @@
 import React from "react";
-import { PLATFORM_TARGETS, PlatformKey, evaluatePlatformReadiness, PlatformReadinessResult } from "@/lib/platform-readiness";
+import { PLATFORM_TARGETS, PlatformKey, PlatformReadinessResult } from "@/lib/platform-readiness";
 
 interface PlatformSelectorProps {
   platform: PlatformKey;

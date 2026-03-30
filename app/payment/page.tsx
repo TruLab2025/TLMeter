@@ -4,11 +4,13 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Mail, Sparkles, Shield, Zap, ArrowRight, Loader2, Info, X, Copy, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { activateCode, saveSession, type Plan } from '@/lib/license';
 import BrandLogo from '@/components/BrandLogo';
 import SiteFooter from '@/components/SiteFooter';
 import { getOrCreateDeviceId } from '@/lib/device';
 import { getOrCreateDeviceKeyRecord } from '@/lib/deviceKeys';
+import { buildAnalyzerLink } from '@/lib/urls';
 
 const PLANS_CONFIG = {
     lite: {
@@ -442,9 +444,27 @@ function PaymentContent() {
                                 )}
 
                                 <div className="flex items-center justify-center gap-5 pt-4 grayscale opacity-30 group-hover:grayscale-0 transition-all">
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-4" />
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-7" />
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="h-4" />
+                                    <Image
+                                        src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg"
+                                        alt="Visa"
+                                        width={72}
+                                        height={28}
+                                        className="h-4 w-auto object-contain"
+                                    />
+                                    <Image
+                                        src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg"
+                                        alt="Mastercard"
+                                        width={72}
+                                        height={32}
+                                        className="h-7 w-auto object-contain"
+                                    />
+                                    <Image
+                                        src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"
+                                        alt="PayPal"
+                                        width={68}
+                                        height={28}
+                                        className="h-4 w-auto object-contain"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -482,7 +502,7 @@ function Nav() {
                     <div className="w-px h-6 bg-[var(--border)] mx-1"></div>
                     <div className="hidden md:flex items-center gap-6">
                         <Link href="/activate" className="btn btn-outline text-xs py-1.5 px-3 border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-all">Aktywuj kod</Link>
-                        <Link href="/analyze" className="btn btn-primary text-sm py-2 px-4 shadow-[0_0_15px_rgba(0,212,255,0.3)] hover:shadow-[0_0_25px_rgba(0,212,255,0.5)]">
+                        <Link href={buildAnalyzerLink()} className="btn btn-primary text-sm py-2 px-4 shadow-[0_0_15px_rgba(0,212,255,0.3)] hover:shadow-[0_0_25px_rgba(0,212,255,0.5)]">
                             Analizuj →
                         </Link>
                     </div>

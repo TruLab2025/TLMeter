@@ -1,13 +1,26 @@
 import type { MetricDefinition, RawAnalysisResult } from "@/lib/reports/types";
 
+type TonalBalanceBand = {
+  name?: string;
+  energyNorm?: unknown;
+  loHz?: unknown;
+  hiHz?: unknown;
+  centerHz?: unknown;
+};
+
+type StereoFrame = {
+  correlation?: unknown;
+};
+
 function numOrNull(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function getBandEnergy(raw: RawAnalysisResult, bandName: string): number | null {
-  const tonalBalance = raw.global?.tonalBalance;
-  if (!Array.isArray(tonalBalance)) return null;
-  const found = tonalBalance.find((band: any) => band?.name === bandName);
+  const tonalBalance = Array.isArray(raw.global?.tonalBalance)
+    ? (raw.global?.tonalBalance as TonalBalanceBand[])
+    : [];
+  const found = tonalBalance.find((band) => band?.name === bandName);
   return numOrNull(found?.energyNorm);
 }
 
@@ -133,22 +146,25 @@ export const METRIC_REGISTRY: MetricDefinition[] = [
 ];
 
 export function buildPremiumExtensions(raw: RawAnalysisResult) {
-  const stereoFrames = Array.isArray(raw.timeSeries?.stereoFrames) ? raw.timeSeries.stereoFrames : [];
+  const stereoFrames = Array.isArray(raw.timeSeries?.stereoFrames)
+    ? (raw.timeSeries.stereoFrames as StereoFrame[])
+    : [];
   const correlationValues = stereoFrames
-    .map((frame: any) => numOrNull(frame?.correlation))
+    .map((frame) => numOrNull(frame?.correlation))
     .filter((value: number | null): value is number => value !== null);
 
   const stereoStats = meanStd(correlationValues);
 
-  const spectralProfile = Array.isArray(raw.global?.tonalBalance)
-    ? raw.global.tonalBalance.map((band: any) => ({
-        band: band?.name ?? null,
-        lo_hz: numOrNull(band?.loHz),
-        hi_hz: numOrNull(band?.hiHz),
-        center_hz: numOrNull(band?.centerHz),
-        energy: numOrNull(band?.energyNorm),
-      }))
+  const tonalBalanceArray = Array.isArray(raw.global?.tonalBalance)
+    ? (raw.global.tonalBalance as TonalBalanceBand[])
     : [];
+  const spectralProfile = tonalBalanceArray.map((band) => ({
+    band: band?.name ?? null,
+    lo_hz: numOrNull(band?.loHz),
+    hi_hz: numOrNull(band?.hiHz),
+    center_hz: numOrNull(band?.centerHz),
+    energy: numOrNull(band?.energyNorm),
+  }));
 
   return {
     spectral_profile: spectralProfile,
@@ -157,7 +173,7 @@ export function buildPremiumExtensions(raw: RawAnalysisResult) {
       onset_strength_std: numOrNull(raw.global?.transients?.onsetStrengthStd),
       transient_sharpness: raw.global?.transientSharpness ?? null,
     }),
-    section_analysis: raw.global?.sections ?? {},
+    section_analysis: (raw.global?.sections as Record<string, unknown>) ?? {},
     stereo_field_map: compact({
       summary: compact({
         correlation_mean: stereoStats?.mean ?? null,

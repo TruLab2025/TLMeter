@@ -22,14 +22,15 @@ interface SponsorScreenProps {
 
 export default function SponsorScreen({ sponsor, onSkip, skipDelay = 2000 }: SponsorScreenProps) {
     const [timeLeft, setTimeLeft] = useState(5);
-    const [canSkip, setCanSkip] = useState(false);
+    const [canSkip, setCanSkip] = useState(skipDelay <= 0);
 
     useEffect(() => {
-        if (skipDelay > 0) {
-            const skipTimer = setTimeout(() => setCanSkip(true), skipDelay);
-            return () => clearTimeout(skipTimer);
+        if (skipDelay <= 0) {
+            return undefined;
         }
-        setCanSkip(true);
+
+        const skipTimer = setTimeout(() => setCanSkip(true), skipDelay);
+        return () => clearTimeout(skipTimer);
     }, [skipDelay]);
 
     useEffect(() => {

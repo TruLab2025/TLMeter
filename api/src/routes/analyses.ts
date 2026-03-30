@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { db } from '../db/index';
 import { analyses, licenses } from '../db/schema';
 import { randomUUID } from 'crypto';
@@ -9,8 +9,43 @@ import { sql } from 'drizzle-orm';
 
 const router = express.Router();
 
+type SaveAnalysisBody = {
+    license_id?: string;
+    style?: string;
+    filename?: string;
+    created_at?: string;
+};
+
+type SubmitMetricsBody = {
+    style?: string;
+    metrics?: Record<string, unknown>;
+};
+
+type AnalysisInsert = {
+    id: string;
+    license_id: string | null;
+    style: string;
+    filename: string;
+    summary: string;
+    full_data: string;
+    score: number | null;
+    created_at: Date;
+};
+
+const forbiddenKeysForMetrics = [
+    'filename',
+    'file_name',
+    'user_id',
+    'artist',
+    'title',
+    'audio',
+    'userId',
+    'userName',
+    'email',
+];
+
 // POST /api/analyses - zapisz nową analizę
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request<Record<string, never>, unknown, SaveAnalysisBody>, res: Response) => {
     try {
         const { license_id, style, filename, created_at } = req.body;
 
@@ -39,7 +74,7 @@ router.post('/', async (req, res) => {
             resolvedLicenseId = matchedLicense?.id ?? null;
         }
 
-        const analysis = {
+        const analysis: AnalysisInsert = {
             id: randomUUID(),
             license_id: resolvedLicenseId, // null = free user or unmatched code
             style,
@@ -50,7 +85,7 @@ router.post('/', async (req, res) => {
             created_at: created_at ? new Date(created_at) : new Date(),
         };
 
-        await db.insert(analyses).values(analysis as any);
+        await db.insert(analyses).values(analysis);
 
         res.json({ success: true, id: analysis.id });
     } catch (error) {
@@ -61,7 +96,7 @@ router.post('/', async (req, res) => {
 
 
 // GET /api/analyses - pobierz wszystkie analizy (optional, dla debugowania)
-router.get('/', requireAdminApiKey, async (req, res) => {
+router.get('/', requireAdminApiKey, async (_req: Request<Record<string, never>, unknown, Record<string, never>>, res: Response) => {
     try {
         const allAnalyses = await db.select().from(analyses);
         res.json(allAnalyses);
@@ -72,7 +107,7 @@ router.get('/', requireAdminApiKey, async (req, res) => {
 });
 
 // GET /api/analyses/count - liczba wszystkich analiz (publiczny, do licznika na HP)
-router.get('/count', async (req, res) => {
+router.get('/count', async (_req: Request, res: Response) => {
     try {
         const row = await db
             .select({ count: sql<number>`count(*)` })
@@ -90,16 +125,16 @@ router.get('/count', async (req, res) => {
 // Endpoint zbiera anonimowe metryki DSP z przeglądarki użytkownika
 // i agreguje je do aktualizacji profili stylów.
 // PRIVACY: NIGDY nie przesyłamy filename, user_id, audio czy metadanych
-router.post('/submit-metrics', async (req, res) => {
+router.post('/submit-metrics', async (req: Request<Record<string, never>, unknown, SubmitMetricsBody>, res: Response) => {
     try {
         const { style, metrics } = req.body;
 
-        // SECURITY CHECK: Odrzuć jeśli ktoś próbuje wysłać identyfikowalne dane
-        const forbiddenKeys = ['filename', 'file_name', 'user_id', 'artist', 'title', 'audio', 'userId', 'userName', 'email'];
-        if (req.body.filename || req.body.file_name || req.body.user_id || req.body.artist || req.body.title || req.body.audio || req.body.userId || req.body.userName || req.body.email) {
+        const bodyKeys: Record<string, unknown> = req.body ?? {};
+        const hasForbiddenKeys = forbiddenKeysForMetrics.some((key) => Reflect.has(bodyKeys, key));
+        if (hasForbiddenKeys) {
             console.warn('🚨 SECURITY: Attempted to submit PII data in metrics');
-            return res.status(400).json({ 
-                error: 'Forbidden: Do not submit filename, artist, user data or audio with metrics' 
+            return res.status(400).json({
+                error: 'Forbidden: Do not submit filename, artist, user data or audio with metrics',
             });
         }
 
@@ -116,6 +151,8 @@ router.post('/submit-metrics', async (req, res) => {
             return res.status(400).json({ error: 'Missing or invalid metrics' });
         }
 
+        const metricsRecord = metrics as Record<string, unknown>;
+
         // Validacja metryk (muszą być liczby)
         const requiredMetrics = [
             'lufs',
@@ -128,7 +165,7 @@ router.post('/submit-metrics', async (req, res) => {
         ];
 
         for (const metric of requiredMetrics) {
-            if (typeof (metrics as any)[metric] !== 'number') {
+            if (typeof metricsRecord[metric] !== 'number') {
                 return res.status(400).json({
                     error: `Missing or invalid metric: ${metric}`,
                 });

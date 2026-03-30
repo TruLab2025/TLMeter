@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { buildAnalyzerLink } from "@/lib/urls";
 
 export default function HeroSection() {
   return (
@@ -24,7 +25,7 @@ export default function HeroSection() {
         Uzyskaj gotowe podpowiedzi poprawy brzmienia z dedykacją dla muzyki gitarowej.
       </p>
       <div className="flex items-center justify-center gap-4 flex-wrap">
-        <Link href="/analyze" className="btn btn-primary text-base px-8 py-3">
+        <Link href={buildAnalyzerLink()} className="btn btn-primary text-base px-8 py-3">
           Analizuj miks za darmo
         </Link>
         <a href="#how-it-works" className="btn btn-outline text-base px-8 py-3">

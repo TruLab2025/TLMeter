@@ -31,7 +31,7 @@ export function calculatePercentiles(values: number[]): MetricPercentiles {
 /**
  * Surowe obliczenie percentyli (bez filtracji)
  */
-function calculatePercentilesRaw(values: number[]): MetricPercentiles {
+export function calculatePercentilesRaw(values: number[]): MetricPercentiles {
   const sorted = [...values].sort((a, b) => a - b);
   const len = sorted.length;
 
@@ -77,7 +77,7 @@ export function assessMetricValue(
   status: "optimal" | "low" | "high" | "critical_low" | "critical_high";
   confidence: number;
 } {
-  const { p10, p25, p50, p75, p90, std_dev } = percentiles;
+  const { p10, p50, p90, std_dev } = percentiles;
 
   // Margines dla critical (1.5 * std_dev poza range)
   const critical_low = p10 - std_dev * criticalMargin;

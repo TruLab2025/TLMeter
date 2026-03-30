@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { buildAnalyzerLink } from "@/lib/urls";
 
 type LandingNavProps = {
   mobileMenuOpen: boolean;
@@ -53,7 +54,7 @@ export default function LandingNav({
             Aktywuj kod
           </Link>
           <Link
-            href="/analyze"
+            href={buildAnalyzerLink()}
             className="btn btn-primary text-sm py-2 px-4 shadow-[0_0_15px_rgba(0,212,255,0.3)] hover:shadow-[0_0_25px_rgba(0,212,255,0.5)]"
           >
             Analizuj →
@@ -106,7 +107,7 @@ export default function LandingNav({
               Aktywuj kod
             </Link>
             <Link
-              href="/analyze"
+              href={buildAnalyzerLink()}
               className="btn btn-primary w-full justify-center text-sm py-2 px-4"
               onClick={onCloseMobileMenu}
             >

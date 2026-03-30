@@ -12,7 +12,24 @@ type TpayCreateTransactionInput = {
 type TpayCreateTransactionResult = {
   transactionId: string;
   paymentUrl: string;
-  raw: any;
+  raw: TpayTransactionResponse | null;
+};
+
+type TpayAuthResponse = {
+  access_token?: string;
+  expires_in?: number;
+  [key: string]: unknown;
+};
+
+type TpayTransactionResponse = {
+  transactionId?: string;
+  id?: string;
+  title?: string;
+  transactionPaymentUrl?: string;
+  paymentUrl?: string;
+  url?: string;
+  tr_id?: string;
+  [key: string]: unknown;
 };
 
 const TPAY_PLAN_PRICE: Record<"lite" | "pro" | "premium", number> = {
@@ -62,7 +79,7 @@ async function getAccessToken(): Promise<string> {
     throw new Error(`Tpay auth failed (${res.status}): ${text}`);
   }
 
-  const data = await res.json() as any;
+  const data = (await res.json()) as TpayAuthResponse;
   const accessToken = data?.access_token;
   const expiresIn = Number(data?.expires_in ?? 3600);
 
@@ -112,7 +129,7 @@ export async function createTpayTransaction(input: TpayCreateTransactionInput): 
     body: JSON.stringify(payload),
   });
 
-  const body = await res.json().catch(() => null);
+  const body = (await res.json().catch(() => null)) as TpayTransactionResponse | null;
   if (!res.ok) {
     throw new Error(`Tpay create transaction failed (${res.status}): ${JSON.stringify(body)}`);
   }
@@ -131,7 +148,7 @@ export async function createTpayTransaction(input: TpayCreateTransactionInput): 
   };
 }
 
-export async function getTpayTransaction(transactionId: string): Promise<any> {
+export async function getTpayTransaction(transactionId: string): Promise<TpayTransactionResponse> {
   if (!transactionId) throw new Error('Missing transactionId');
   const token = await getAccessToken();
   const base = getTpayBaseUrl();
@@ -145,11 +162,11 @@ export async function getTpayTransaction(transactionId: string): Promise<any> {
     },
   });
 
-  const body = await res.json().catch(() => null);
+  const body = (await res.json().catch(() => null)) as TpayTransactionResponse | null;
   if (!res.ok) {
     throw new Error(`Tpay get transaction failed (${res.status}): ${JSON.stringify(body)}`);
   }
-  return body;
+  return body ?? {};
 }
 
 export function getPlanPrice(plan: "lite" | "pro" | "premium"): number {
@@ -161,6 +178,7 @@ export function isSuccessfulTpayStatus(status: unknown): boolean {
   return ["correct", "success", "paid", "completed"].includes(normalized);
 }
 
-export function extractTpayTransactionId(payload: any): string | null {
-  return payload?.transactionId || payload?.tr_id || payload?.id || payload?.title || null;
+export function extractTpayTransactionId(payload: TpayTransactionResponse | null): string | null {
+  if (!payload) return null;
+  return payload.transactionId || payload.tr_id || payload.id || payload.title || null;
 }

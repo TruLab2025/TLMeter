@@ -507,11 +507,8 @@ export function updateProfileWithAggregation(
 
   // Zaktualizuj percentyle dla każdej metryki
   Object.entries(newPercentiles).forEach(([metricName, percentiles]) => {
-    if (!profile.metrics[metricName as keyof typeof profile.metrics]) {
-      profile.metrics[metricName as keyof typeof profile.metrics] =
-        {} as any;
-    }
-    profile.metrics[metricName as keyof typeof profile.metrics] = percentiles;
+    const key = metricName as keyof typeof profile.metrics;
+    profile.metrics[key] = percentiles;
   });
 
   profile.last_updated = Date.now();

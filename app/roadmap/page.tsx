@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { migrateHistoryToServer } from "@/lib/history";
 import BrandLogo from "@/components/BrandLogo";
 import SiteFooter from "@/components/SiteFooter";
+import { buildAnalyzerLink } from "@/lib/urls";
 
 const roadmapItems = [
   {
@@ -154,7 +155,7 @@ export default function RoadmapPage() {
             <Link href="/#dictionary" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">Baza wiedzy</Link>
             <div className="w-px h-4 bg-[var(--border)]"></div>
             <Link href="/activate" className="btn btn-outline text-xs py-1.5 px-3 border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-all">Aktywuj kod</Link>
-            <Link href="/analyze" className="btn btn-primary text-sm py-2 px-4 shadow-[0_0_15px_rgba(0,212,255,0.3)] hover:shadow-[0_0_25px_rgba(0,212,255,0.5)]">
+            <Link href={buildAnalyzerLink()} className="btn btn-primary text-sm py-2 px-4 shadow-[0_0_15px_rgba(0,212,255,0.3)] hover:shadow-[0_0_25px_rgba(0,212,255,0.5)]">
               Analizuj →
             </Link>
           </div>
@@ -183,7 +184,7 @@ export default function RoadmapPage() {
               <Link href="/#dictionary" className="block text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors py-2" onClick={() => setMobileMenuOpen(false)}>Baza wiedzy</Link>
               <div className="border-t border-[var(--border)] my-3"></div>
               <Link href="/activate" className="btn btn-outline w-full justify-center text-xs py-2 px-3" onClick={() => setMobileMenuOpen(false)}>Aktywuj kod</Link>
-              <Link href="/analyze" className="btn btn-primary w-full justify-center text-sm py-2 px-4" onClick={() => setMobileMenuOpen(false)}>
+              <Link href={buildAnalyzerLink()} className="btn btn-primary w-full justify-center text-sm py-2 px-4" onClick={() => setMobileMenuOpen(false)}>
                 Analizuj →
               </Link>
             </div>
@@ -215,7 +216,7 @@ export default function RoadmapPage() {
           Transparentnie pokazujemy, co już zbudowaliśmy, nad czym aktualnie pracujemy i co planujemy w przyszłości. Twoja opinia ma znaczenie — jeśli masz pomysł na funkcję, <Link href="mailto:contact@trulab.pl" className="text-[var(--accent)] hover:underline">napisz do nas</Link>.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <Link href="/analyze" className="btn btn-primary text-sm py-2 px-6">
+          <Link href={buildAnalyzerLink()} className="btn btn-primary text-sm py-2 px-6">
             Wypróbuj teraz
           </Link>
           <Link href="/#pricing" className="btn btn-outline text-sm py-2 px-6">

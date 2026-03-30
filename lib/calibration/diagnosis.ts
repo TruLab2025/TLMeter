@@ -142,17 +142,6 @@ const METRIC_METADATA: Record<string, MetricMetadata> = {
 };
 
 /**
- * Diagnozy dla konkretnych problemów
- */
-interface ProblemAggregation {
-  problem: string;
-  severity: "low" | "medium" | "high";
-  description: string;
-  metrics: string[];
-  how_to_fix: string;
-}
-
-/**
  * Wygeneruj diagnozę dla jednej metryki
  */
 function diagnoseSingleMetric(
@@ -220,6 +209,14 @@ function diagnoseSingleMetric(
 /**
  * Agreguj diagnoz do problemów
  */
+const CATEGORY_LABELS: Record<string, string> = {
+  loudness: "Głośność",
+  spectrum: "Spektrum",
+  stereo: "Stereo",
+  dynamics: "Dynamika",
+  psychoacoustic: "Psychoakustyka",
+};
+
 function aggregateProblems(diagnoses: MetricDiagnosis[]): Array<{
   severity: "low" | "medium" | "high";
   title: string;
@@ -255,13 +252,7 @@ function aggregateProblems(diagnoses: MetricDiagnosis[]): Array<{
     const [category, direction] = key.split("_");
     const isLow = direction === "too_low";
 
-    const categoryName = ({
-      loudness: "Głośność",
-      spectrum: "Spektrum",
-      stereo: "Stereo",
-      dynamics: "Dynamika",
-      psychoacoustic: "Psychoakustyka",
-    } as any)[category] || category;
+    const categoryName = CATEGORY_LABELS[category] || category;
 
     const severity = metrics.length > 2 ? "high" : "medium";
 

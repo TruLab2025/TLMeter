@@ -1,5 +1,4 @@
 import type { Plan } from "@/lib/license";
-import type { StyleMatchResult } from "@/lib/reports/style-match";
 
 export type ReportPlan = Plan;
 
@@ -32,8 +31,8 @@ export interface RawAnalysisResult {
     frameSize?: number;
     hopSize?: number;
   };
-  global?: Record<string, any>;
-  timeSeries?: Record<string, any>;
+  global?: Record<string, unknown>;
+  timeSeries?: Record<string, unknown>;
 }
 
 export interface AnalysisMetadataSection {

@@ -2,6 +2,13 @@ import { analyzeAudioBuffer } from "./analyze.js";
 
 type ProgressPayload = { stage: string; detail?: string };
 
+type AudioBufferLike = {
+  sampleRate: number;
+  numberOfChannels: number;
+  duration: number;
+  getChannelData(channel: number): Float32Array;
+};
+
 type AnalyzeRequestMessage = {
   type: "analyze";
   id: number;
@@ -47,7 +54,7 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
   const right = new Float32Array(msg.right);
   const n = Math.min(left.length, right.length);
 
-  const fakeAudioBuffer = {
+const fakeAudioBuffer: AudioBufferLike = {
     sampleRate: msg.sampleRate,
     numberOfChannels: 2,
     duration: n / msg.sampleRate,
@@ -71,11 +78,12 @@ self.onmessage = async (event: MessageEvent<IncomingMessage>) => {
   const isAborted = () => abortFlags.get(msg.id) === true;
 
   try {
-    const result = await analyzeAudioBuffer(fakeAudioBuffer as any, {
+    const analyzeOptions = {
       ...msg.options,
       isAborted,
       onProgress,
-    } as any);
+    };
+    const result = await analyzeAudioBuffer(fakeAudioBuffer, analyzeOptions);
     const out: OutgoingMessage = { type: "result", id: msg.id, result };
     self.postMessage(out);
   } catch (error) {

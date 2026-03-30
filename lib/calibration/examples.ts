@@ -218,9 +218,6 @@ export async function integrationTest() {
   clearMetricsStore();
 
   // 1. Obsłużyć profile
-  const rockProfile = await getStyleProfile("rock");
-  console.log("✓ Rock profile loaded");
-
   // 2. Zdiagnozuj miks
   const testMetrics: AnalysisMetrics = {
     lufs: -9.0,

@@ -63,8 +63,9 @@ export const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
  * (Możliwość override dla różnych stylów)
  */
 export function getStyleSpecificConfig(
-  style: string
+  _style: string
 ): CalibrationConfig {
+  void _style;
   // Domyślnie zwróć default config
   // W przyszłości: mogą być style-specific overrides
   return DEFAULT_CALIBRATION_CONFIG;

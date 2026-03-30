@@ -92,10 +92,12 @@ export default function AnalysisResults({
     () => AVAILABLE_STYLES.map((s) => ({ value: s.slug, label: s.name })),
     []
   );
+  const hasKnownStyle = (slug?: string | null): slug is string => Boolean(slug && styleSlugs.has(slug));
+  const referenceGenreCandidate = result?.styleMatch?.selected_genre ?? null;
   const libraryStyleForSubmit =
-    (detectedStyleSlug && styleSlugs.has(detectedStyleSlug as any) ? detectedStyleSlug : null)
-    ?? (analyzedStyle && styleSlugs.has(analyzedStyle as any) ? analyzedStyle : null)
-    ?? (result?.styleMatch?.selected_genre && styleSlugs.has(result.styleMatch.selected_genre as any) ? result.styleMatch.selected_genre : null)
+    (hasKnownStyle(detectedStyleSlug) ? detectedStyleSlug : null)
+    ?? (hasKnownStyle(analyzedStyle) ? analyzedStyle : null)
+    ?? (hasKnownStyle(referenceGenreCandidate) ? referenceGenreCandidate : null)
     ?? "rock";
 
   useEffect(() => {

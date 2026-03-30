@@ -1,7 +1,7 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { db } from '../db/index';
 import { licenses, licenseDevices } from '../db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
@@ -30,8 +30,30 @@ const validationLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+type LicenseActivationBody = {
+    code?: string;
+    fingerprint?: string;
+    userAgent?: string;
+};
+
+type LicenseValidateBody = {
+    token?: string;
+    fingerprint?: string;
+};
+
+type DecodedSession = {
+    licenseId: string;
+    fingerprint: string;
+};
+
+type LicenseGenerationBody = {
+    plan?: string;
+    device_id?: string;
+    device_pub?: string;
+};
+
 // 1. Activate License
-router.post('/activate', activationLimiter, express.json(), async (req, res) => {
+router.post('/activate', activationLimiter, express.json(), async (req: Request<Record<string, never>, unknown, LicenseActivationBody>, res: Response) => {
     try {
         const { code, fingerprint, userAgent } = req.body;
 
@@ -66,7 +88,7 @@ router.post('/activate', activationLimiter, express.json(), async (req, res) => 
         const devices = await db.select().from(licenseDevices).where(eq(licenseDevices.license_id, license.id));
 
         // Check if this fingerprint is already registered
-        let deviceRecord = devices.find(d => d.fingerprint === fingerprint);
+        const deviceRecord = devices.find((d) => d.fingerprint === fingerprint);
 
         if (!deviceRecord) {
             // New device. Check limit
@@ -106,7 +128,7 @@ router.post('/activate', activationLimiter, express.json(), async (req, res) => 
             {
                 licenseId: license.id,
                 plan: license.plan,
-                fingerprint: fingerprint
+                fingerprint: fingerprint,
             },
             JWT_SECRET,
             { expiresIn: '30d' }
@@ -126,7 +148,7 @@ router.post('/activate', activationLimiter, express.json(), async (req, res) => 
 });
 
 // 2. Validate Session (called by frontend on load/actions)
-router.post('/validate', validationLimiter, express.json(), async (req, res) => {
+router.post('/validate', validationLimiter, express.json(), async (req: Request<Record<string, never>, unknown, LicenseValidateBody>, res: Response) => {
     try {
         const { token, fingerprint } = req.body;
 
@@ -139,7 +161,7 @@ router.post('/validate', validationLimiter, express.json(), async (req, res) => 
         }
 
         // Verify JWT
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, JWT_SECRET) as DecodedSession;
 
         // If frontend fingerprint doesn't match the one in token, reject (prevents token stealing)
         if (decoded.fingerprint !== fingerprint) {
@@ -155,7 +177,7 @@ router.post('/validate', validationLimiter, express.json(), async (req, res) => 
         }
 
         res.json({ valid: true, plan: license.plan });
-    } catch (error) {
+    } catch {
         // Token expired or invalid
         res.json({ valid: false, plan: 'free' });
     }
@@ -185,7 +207,7 @@ router.post('/validate-token', express.json(), (req, res) => {
 });
 
 // Dry-run token issuer (DEV only) - simulates "payment success -> issue token"
-router.post('/dev-issue', requireDevelopmentOnly, express.json(), (req, res) => {
+router.post('/dev-issue', requireDevelopmentOnly, express.json(), (req: Request<Record<string, never>, unknown, LicenseGenerationBody>, res: Response) => {
     const deviceId = req.header('x-device-id') || (typeof req.body?.device_id === 'string' ? req.body.device_id : '');
     if (!deviceId) {
         return res.status(400).json({ error: 'missing-device-id' });

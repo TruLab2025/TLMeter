@@ -6,7 +6,14 @@ type IfirmaInvoiceInput = {
   licenseCode: string;
 };
 
-export async function createIfirmaInvoice(input: IfirmaInvoiceInput): Promise<{ success: boolean; invoiceId?: string; raw?: any; skipped?: boolean }> {
+type IfirmaInvoiceResult = {
+  success: boolean;
+  invoiceId?: string;
+  raw?: Record<string, unknown> | null;
+  skipped?: boolean;
+};
+
+export async function createIfirmaInvoice(input: IfirmaInvoiceInput): Promise<IfirmaInvoiceResult> {
   const apiUrl = process.env.IFIRMA_API_URL;
   const apiKey = process.env.IFIRMA_API_KEY;
 
@@ -43,7 +50,7 @@ export async function createIfirmaInvoice(input: IfirmaInvoiceInput): Promise<{ 
     body: JSON.stringify(payload),
   });
 
-  const body = await res.json().catch(() => null);
+  const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
   if (!res.ok) {
     console.error("[iFirma] Invoice create failed", res.status, body);
     return { success: false, raw: body };
