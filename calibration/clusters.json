@@ -1,0 +1,114 @@
+{
+  "feature_names": [
+    "rms",
+    "crest_factor",
+    "spectral_centroid",
+    "spectral_rolloff",
+    "low_energy",
+    "mid_energy",
+    "presence",
+    "transient_density",
+    "harmonic_ratio",
+    "spectral_flatness",
+    "sustain",
+    "dynamic_range"
+  ],
+  "clusters": [
+    {
+      "cluster_id": 0,
+      "label": "grunge attack",
+      "centroid": [
+        -0.25,
+        0.5,
+        -0.5,
+        -0.25,
+        0.5,
+        0.5,
+        -0.3,
+        1.0,
+        0.3333,
+        0.6,
+        1.0,
+        0.5
+      ],
+      "feature_levels": {
+        "rms": "medium",
+        "crest_factor": "medium",
+        "spectral_centroid": "medium",
+        "spectral_rolloff": "medium",
+        "low_energy": "medium",
+        "mid_energy": "medium",
+        "presence": "medium",
+        "transient_density": "medium",
+        "harmonic_ratio": "medium",
+        "spectral_flatness": "medium",
+        "sustain": "medium",
+        "dynamic_range": "medium"
+      }
+    },
+    {
+      "cluster_id": 1,
+      "label": "pop snare",
+      "centroid": [
+        1.0,
+        -0.8,
+        0.6667,
+        0.75,
+        -0.5,
+        1.0,
+        0.5,
+        -1.0,
+        -0.6667,
+        1.6,
+        -0.5,
+        -0.5
+      ],
+      "feature_levels": {
+        "rms": "medium",
+        "crest_factor": "medium",
+        "spectral_centroid": "medium",
+        "spectral_rolloff": "medium",
+        "low_energy": "medium",
+        "mid_energy": "medium",
+        "presence": "medium",
+        "transient_density": "medium",
+        "harmonic_ratio": "medium",
+        "spectral_flatness": "high",
+        "sustain": "medium",
+        "dynamic_range": "medium"
+      }
+    },
+    {
+      "cluster_id": 2,
+      "label": "tight amb",
+      "centroid": [
+        -0.75,
+        1,
+        -0.8333,
+        -0.75,
+        -1,
+        -1,
+        -0.5,
+        2.0,
+        1.3333,
+        -1,
+        -1.5,
+        1.5
+      ],
+      "feature_levels": {
+        "rms": "medium",
+        "crest_factor": "medium",
+        "spectral_centroid": "medium",
+        "spectral_rolloff": "medium",
+        "low_energy": "medium",
+        "mid_energy": "medium",
+        "presence": "medium",
+        "transient_density": "high",
+        "harmonic_ratio": "high",
+        "spectral_flatness": "medium",
+        "sustain": "low",
+        "dynamic_range": "high"
+      }
+    }
+  ]
+}

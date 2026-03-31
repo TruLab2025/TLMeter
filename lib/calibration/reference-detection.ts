@@ -117,6 +117,8 @@ const REFERENCE_SONGS: Record<string, Set<string>> = {
     "down on the level",
     "alive",
     "rooster",
+    "lounge act",
+    "longue act",
   ]),
 
   pop: new Set([

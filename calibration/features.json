@@ -1,0 +1,32 @@
+{
+  "feature_names": [
+    "rms",
+    "crest_factor",
+    "spectral_centroid",
+    "spectral_rolloff",
+    "low_energy",
+    "mid_energy",
+    "presence",
+    "transient_density",
+    "harmonic_ratio",
+    "spectral_flatness",
+    "sustain",
+    "dynamic_range"
+  ],
+  "samples": [
+    {
+      "file": "grunge/track1.wav",
+      "path": "datasets/grunge/track1.wav",
+      "style": "grunge",
+      "instrument": "guitar",
+      "features": [0.045, 5.2, 2300, 4200, 0.34, 0.46, 0.23, 5.2, 1.35, 0.21, 0.52, 9]
+    },
+    {
+      "file": "pop/snare1.wav",
+      "path": "datasets/pop/snare1.wav",
+      "style": "pop",
+      "instrument": "drum",
+      "features": [0.067, 4.1, 3000, 4700, 0.26, 0.51, 0.32, 3.1, 1.04, 0.29, 0.36, 7]
+    }
+  ]
+}

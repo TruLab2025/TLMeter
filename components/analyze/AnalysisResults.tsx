@@ -46,6 +46,7 @@ interface AnalysisResultsProps {
   contributeToProfile?: boolean;
   onAddToLibrary?: (params: { style: string }) => Promise<void> | void;
   planFeatures: PlanFeatures;
+  calibrationSuggestions?: string[];
 }
 
 export default function AnalysisResults({
@@ -70,6 +71,7 @@ export default function AnalysisResults({
   contributeToProfile,
   onAddToLibrary,
   planFeatures,
+  calibrationSuggestions = [],
 }: AnalysisResultsProps) {
   const [addingToLibrary, setAddingToLibrary] = useState(false);
   const [libraryArtist, setLibraryArtist] = useState<string>("");
@@ -347,6 +349,17 @@ export default function AnalysisResults({
                     </ul>
                   </div>
                 ) : null}
+
+                {calibrationSuggestions.length > 0 && isLowMatch && (
+                  <div className="mt-3 text-sm text-[var(--text-primary)]">
+                    <div className="font-semibold uppercase tracking-tight text-[var(--text-muted)] text-xs">Sugestie poprawy (żeby dopasować)</div>
+                    <ul className="mt-1 space-y-1 list-disc list-inside">
+                      {calibrationSuggestions.map((suggestion) => (
+                        <li key={suggestion}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <div className="md:border-l md:border-[var(--border)] md:pl-6">

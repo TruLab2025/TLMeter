@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import statsPayload from "@/calibration/stats.json";
+import clustersPayload from "@/calibration/clusters.json";
+import type { CalibrationStatsPayload, CalibrationClustersPayload } from "@/lib/calibration/types";
+import { createCalibrationMatcher, type MatchResult } from "@/lib/calibration/matching";
 import { AVAILABLE_STYLES, loadProfile, type StyleSlug } from "@/lib/profiles";
 import { getSession, clearSession, PLAN_FEATURES, getAuthHeaders, type SessionData } from "@/lib/license";
 import { loadAllTips, detectProblems, matchTips, type Tip } from "@/lib/tips";
@@ -39,6 +43,63 @@ import {
     REQUIRED_PLAN_BY_STYLE,
     STYLES_BY_PLAN,
 } from "@/lib/analyze/config";
+
+const CALIBRATION_FEATURES = [
+  "rms",
+  "crest_factor",
+  "spectral_centroid",
+  "spectral_rolloff",
+  "low_energy",
+  "mid_energy",
+  "presence",
+  "transient_density",
+  "harmonic_ratio",
+  "spectral_flatness",
+  "sustain",
+  "dynamic_range",
+];
+
+function buildCalibrationVector(result: AnalysisResult): number[] {
+  const lufs = result.global.integratedLufs ?? -23;
+  const rms = Math.pow(10, lufs / 20);
+  const crest = Math.max(1, result.global.crestFactorDbMean ?? 5);
+  const centroid = result.global.spectral?.centroidHzMean ?? 2600;
+  const rolloff = result.global.spectral?.centroidHzMean
+    ? Math.max(centroid * 1.4, centroid + 400)
+    : 4200;
+  const energy = result.global.energyDistribution;
+  const lowEnergy = energy.low ?? 0.3;
+  const midEnergy = energy.mid ?? 0.4;
+  const presence = energy.high ?? 0.25;
+  const duration = Math.max(result.meta.durationSec ?? 1, 0.25);
+  const transients = result.timeSeries?.onsetTimesSec ?? [];
+  const transientDensity = transients.length > 0
+    ? transients.length / duration
+    : result.global.transients?.onsetStrengthMean ?? 4;
+  const stereoWidth = result.global.stereo?.width ?? 0.5;
+  const harmonicRatio = Math.max(0.1, 1 + stereoWidth - 0.5);
+  const spectralFlatness = result.global.spectral?.flatnessMean ?? 0.2;
+  const sustain = Math.min(1, Math.max(0, (result.global.lra ?? 8) / 20));
+  const dynamicRange = result.global.lra ?? 8;
+
+  const map: Record<string, number> = {
+    rms,
+    crest_factor: crest,
+    spectral_centroid: centroid,
+    spectral_rolloff: rolloff,
+    low_energy: lowEnergy,
+    mid_energy: midEnergy,
+    presence,
+    transient_density: transientDensity,
+    harmonic_ratio: harmonicRatio,
+    spectral_flatness: spectralFlatness,
+    sustain,
+    dynamic_range: dynamicRange,
+  };
+
+  return CALIBRATION_FEATURES.map((feature) => map[feature] ?? 0);
+}
+
 
 async function waitWithAbort(ms: number, isAborted: () => boolean) {
     if (ms <= 0) return;
@@ -333,6 +394,26 @@ export default function AnalyzePage() {
         setProgress,
         setProgressTargetPct,
     });
+
+    const matcher = useMemo(
+        () => createCalibrationMatcher(statsPayload as CalibrationStatsPayload, clustersPayload as CalibrationClustersPayload),
+        []
+    );
+    const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+
+    useEffect(() => {
+        if (!result) {
+            setMatchResult(null);
+            return;
+        }
+        try {
+            const vector = buildCalibrationVector(result);
+            setMatchResult(matcher(vector));
+        } catch (error) {
+            console.warn("calibration matcher error", error);
+            setMatchResult(null);
+        }
+    }, [matcher, result]);
 
     async function waitUntilProgressReaches(targetPct: number, timeoutMs: number) {
         const start = performance.now();
@@ -892,8 +973,8 @@ export default function AnalyzePage() {
 
                 <LoadingTipCard visible={sections.length === 0} loadingTip={loadingTip} />
 
-	                <AnalysisResults
-	                    result={result}
+                <AnalysisResults
+                    result={result}
 	                    referenceResult={referenceResult}
 	                    referenceFile={referenceFile}
 	                    sections={sections}
@@ -911,17 +992,15 @@ export default function AnalyzePage() {
 	                    showAllTips={showAllTips}
 	                    onShowAllTips={() => setShowAllTips(true)}
 	                    referenceDetected={referenceDetected}
-	                    contributeToProfile={contributeToProfile}
-	                    onAddToLibrary={async ({ style: styleOverride }) => {
-	                        await submitCurrentToStyleLibrary({ style: styleOverride });
-	                    }}
-	                    planFeatures={planFeatures}
-	                />
-            </div>
-
-            {result && !analyzing && (
-                <div className="max-w-6xl mx-auto px-6 my-6">
-                    <div className="flex justify-center">
+                    contributeToProfile={contributeToProfile}
+                    onAddToLibrary={async ({ style: styleOverride }) => {
+                        await submitCurrentToStyleLibrary({ style: styleOverride });
+                    }}
+                    planFeatures={planFeatures}
+                    calibrationSuggestions={matchResult?.suggestions ?? []}
+                />
+                {result && !analyzing && (
+                    <div className="max-w-6xl mx-auto px-6 py-3 flex justify-center">
                         <button
                             type="button"
                             onClick={() => {
@@ -936,10 +1015,10 @@ export default function AnalyzePage() {
                             Wyczyść aktualną analizę
                         </button>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
-            <AnalysisHistorySection
+                <AnalysisHistorySection
                 mounted={mounted}
                 historyEntries={historyEntries}
                 current={result ? {

@@ -1,0 +1,102 @@
+{
+  "feature_names": [
+    "rms",
+    "crest_factor",
+    "spectral_centroid",
+    "spectral_rolloff",
+    "low_energy",
+    "mid_energy",
+    "presence",
+    "transient_density",
+    "harmonic_ratio",
+    "spectral_flatness",
+    "sustain",
+    "dynamic_range"
+  ],
+  "stats": {
+    "rms": {
+      "mean": 0.05,
+      "std": 0.02,
+      "p25": 0.03,
+      "p50": 0.05,
+      "p75": 0.07
+    },
+    "crest_factor": {
+      "mean": 5,
+      "std": 1,
+      "p25": 4,
+      "p50": 5,
+      "p75": 6
+    },
+    "spectral_centroid": {
+      "mean": 2600,
+      "std": 600,
+      "p25": 2100,
+      "p50": 2600,
+      "p75": 3100
+    },
+    "spectral_rolloff": {
+      "mean": 4200,
+      "std": 800,
+      "p25": 3600,
+      "p50": 4200,
+      "p75": 4800
+    },
+    "low_energy": {
+      "mean": 0.3,
+      "std": 0.1,
+      "p25": 0.2,
+      "p50": 0.3,
+      "p75": 0.4
+    },
+    "mid_energy": {
+      "mean": 0.4,
+      "std": 0.1,
+      "p25": 0.3,
+      "p50": 0.4,
+      "p75": 0.5
+    },
+    "presence": {
+      "mean": 0.25,
+      "std": 0.1,
+      "p25": 0.15,
+      "p50": 0.25,
+      "p75": 0.35
+    },
+    "transient_density": {
+      "mean": 4,
+      "std": 1,
+      "p25": 3,
+      "p50": 4,
+      "p75": 5
+    },
+    "harmonic_ratio": {
+      "mean": 1.2,
+      "std": 0.3,
+      "p25": 1,
+      "p50": 1.2,
+      "p75": 1.5
+    },
+    "spectral_flatness": {
+      "mean": 0.2,
+      "std": 0.05,
+      "p25": 0.15,
+      "p50": 0.2,
+      "p75": 0.25
+    },
+    "sustain": {
+      "mean": 0.4,
+      "std": 0.1,
+      "p25": 0.3,
+      "p50": 0.4,
+      "p75": 0.5
+    },
+    "dynamic_range": {
+      "mean": 8,
+      "std": 2,
+      "p25": 6,
+      "p50": 8,
+      "p75": 10
+    }
+  }
+}
